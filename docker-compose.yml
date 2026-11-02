@@ -1,0 +1,83 @@
+x-app: &app
+  build: .
+  image: verdict-app
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    DATABASE_URL: postgresql+psycopg://verdict:verdict@db:5432/verdict
+    REDIS_URL: redis://redis:6379/0
+    PROBLEMS_DIR: /data/problems
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: verdict
+      POSTGRES_PASSWORD: verdict
+      POSTGRES_DB: verdict
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U verdict -d verdict"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    <<: *app
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    <<: *app
+    ports:
+      - "8000:8000"
+    volumes:
+      - problems:/data/problems
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "verdict.judge"]
+    # The socket's group differs by host: 0 on Docker Desktop, the docker group's id on Linux.
+    group_add:
+      - "${DOCKER_GID:-0}"
+    volumes:
+      - problems:/data/problems:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redisdata:
+  problems:

@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: verdict
+          POSTGRES_PASSWORD: verdict
+          POSTGRES_DB: verdict
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U verdict -d verdict"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgresql+psycopg://verdict:verdict@localhost:5432/verdict
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.13.1"
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy
+      - run: uv run alembic upgrade head
+      - run: uv run pytest
