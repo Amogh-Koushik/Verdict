@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% set heading = "Edit " ~ problem.title if problem else "New problem" %}
+{% set action = "/admin/problems/%d/edit" % problem.id if problem else "/admin/problems/new" %}
+{% block title %}{{ heading }} · Admin · Verdict{% endblock %}
+{% block content %}
+  <h1>{{ heading }}</h1>
+  {% include "_form_error.html" %}
+  <form method="post" action="{{ action }}" class="stacked wide">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Slug (used in the address)
+      <input name="slug" value="{{ form.slug }}" maxlength="64" pattern="[a-z0-9]+(-[a-z0-9]+)*" required>
+    </label>
+    <label>Title <input name="title" value="{{ form.title }}" maxlength="200" required></label>
+    <label>Statement (Markdown; HTML is shown as text)
+      <textarea name="statement_md" rows="16">{{ form.statement_md }}</textarea>
+    </label>
+    <label>Time limit in ms for C++ (100 to 10000)
+      <input name="time_limit_ms" value="{{ form.time_limit_ms }}" inputmode="numeric" required>
+    </label>
+    <label>Memory limit in MB (16 to 1024)
+      <input name="memory_limit_mb" value="{{ form.memory_limit_mb }}" inputmode="numeric" required>
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="is_public"{% if form.is_public %} checked{% endif %}>
+      Public: anyone can see it
+    </label>
+    <button type="submit">{{ "Save changes" if problem else "Create problem" }}</button>
+  </form>
+{% endblock %}

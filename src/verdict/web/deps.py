@@ -69,3 +69,14 @@ def get_form_viewer(viewer: ViewerDep, redis: RedisDep, settings: SettingsDep) -
 
 
 FormViewerDep = Annotated[Viewer, Depends(get_form_viewer)]
+
+
+class AdminOnlyError(Exception):
+    def __init__(self) -> None:
+        super().__init__("only administrators may use this page")
+
+
+def require_admin(viewer: ViewerDep) -> User:
+    if viewer.user is None or not viewer.user.is_admin:
+        raise AdminOnlyError
+    return viewer.user

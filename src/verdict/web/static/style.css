@@ -101,3 +101,65 @@ button {
   color: var(--error-text);
   border-radius: 4px;
 }
+
+form.stacked.wide {
+  max-width: none;
+}
+
+textarea {
+  font: 0.95em ui-monospace, "Cascadia Mono", Consolas, monospace;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+label.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+table.listing {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+}
+
+table.listing th,
+table.listing td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0 0.4rem;
+  font-size: 0.85em;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+p.badge {
+  margin-left: 0;
+}
+
+dl.limits {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+}
+
+dl.limits dd {
+  margin: 0;
+}
+
+.statement pre {
+  padding: 0.75rem;
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}

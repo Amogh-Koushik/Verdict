@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Problems · Admin · Verdict{% endblock %}
+{% block content %}
+  <h1>Problems</h1>
+  <p><a href="/admin/problems/new">New problem</a></p>
+  {% if problems %}
+    <table class="listing">
+      <thead><tr><th>Slug</th><th>Title</th><th>Public</th><th>Tests version</th><th></th></tr></thead>
+      <tbody>
+        {% for problem in problems %}
+          <tr>
+            <td><a href="/problems/{{ problem.slug }}">{{ problem.slug }}</a></td>
+            <td>{{ problem.title }}</td>
+            <td>{{ "Yes" if problem.is_public else "No" }}</td>
+            <td>{{ problem.tests_version if problem.tests_version else "No tests" }}</td>
+            <td>
+              <a href="/admin/problems/{{ problem.id }}/edit">Edit</a>
+              <a href="/admin/problems/{{ problem.id }}/tests">Tests</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No problems yet.</p>
+  {% endif %}
+{% endblock %}

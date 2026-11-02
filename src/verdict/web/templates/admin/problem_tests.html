@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Tests for {{ problem.title }} · Admin · Verdict{% endblock %}
+{% block content %}
+  <h1>Tests for {{ problem.title }}</h1>
+  <p><a href="/admin/problems/{{ problem.id }}/edit">Edit the problem</a></p>
+  {% if problem.tests_version %}
+    <p>Version {{ problem.tests_version }} is in use, with {{ tests | length }} tests.</p>
+    <table class="listing">
+      <thead><tr><th>Test</th><th>Input SHA-256</th><th>Output SHA-256</th></tr></thead>
+      <tbody>
+        {% for test in tests %}
+          <tr>
+            <td>{{ test.idx }}</td>
+            <td><code>{{ test.input_sha256[:16] }}…</code></td>
+            <td><code>{{ test.output_sha256[:16] }}…</code></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>This problem has no tests yet.</p>
+  {% endif %}
+  <h2>Upload a new version</h2>
+  <p>
+    A zip holding <code>1.in</code>, <code>1.out</code>, <code>2.in</code>, <code>2.out</code> and so on,
+    numbered from 1 with no gaps and no folders. At most {{ max_tests }} tests, 10 MB per file and
+    50 MB in total. Earlier versions are kept.
+  </p>
+  {% include "_form_error.html" %}
+  <form method="post" action="/admin/problems/{{ problem.id }}/tests" enctype="multipart/form-data" class="stacked">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Test archive <input type="file" name="archive" accept=".zip,application/zip" required></label>
+    <button type="submit">Upload</button>
+  </form>
+{% endblock %}

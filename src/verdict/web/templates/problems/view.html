@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ problem.title }} · Verdict{% endblock %}
+{% block content %}
+  <h1>{{ problem.title }}</h1>
+  {% if not problem.is_public %}
+    <p class="badge">Not public: only administrators and contest participants can see this problem.</p>
+  {% endif %}
+  <dl class="limits">
+    <dt>Time limit</dt>
+    <dd>
+      {{ problem.time_limit_ms | seconds }} for C++,
+      {{ python_time_limit_ms | seconds }} for Python ({{ "%g" | format(python_multiplier) }}× the C++ limit)
+    </dd>
+    <dt>Memory limit</dt>
+    <dd>{{ problem.memory_limit_mb }} MB</dd>
+  </dl>
+  <article class="statement">
+    {{ statement }}
+  </article>
+{% endblock %}

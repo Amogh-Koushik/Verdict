@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
-from tests.integration.forms import csrf_token_from, register
+from tests.integration.forms import csrf_token_from, log_in_as_admin, register
 from verdict.core.config import Settings
 from verdict.web.main import create_app
 
@@ -8,12 +9,13 @@ PASSWORD = "correct horse battery"
 
 
 def test_every_post_route_refuses_a_post_without_the_csrf_token(
-    client: TestClient, settings: Settings
+    client: TestClient, settings: Settings, db: Session
 ) -> None:
     paths = create_app(settings).openapi()["paths"]
     post_paths = [path for path, operations in paths.items() if "post" in operations]
-    assert {"/login", "/register", "/logout"} <= set(post_paths)
-    client.get("/login")
+    assert {"/login", "/register", "/logout", "/admin/problems/new"} <= set(post_paths)
+    # As an admin, so admin routes get past their admin check and reach the CSRF check.
+    log_in_as_admin(client, db)
     for path in post_paths:
         response = client.post(path, data={"username": "alice", "password": PASSWORD})
         assert response.status_code == 403, f"{path} accepted a post without a CSRF token"

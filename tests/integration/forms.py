@@ -2,8 +2,12 @@ import re
 
 import httpx2
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
+from verdict.core.accounts import create_user
 from verdict.web.sessions import SESSION_COOKIE
+
+ADMIN_PASSWORD = "admin password 1"
 
 CSRF_FIELD = re.compile(r'name="csrf_token" value="([^"]+)"')
 
@@ -46,3 +50,9 @@ def log_in(client: TestClient, username: str, password: str) -> httpx2.Response:
 def log_out(client: TestClient) -> httpx2.Response:
     csrf_token = csrf_token_from(client.get("/"))
     return client.post("/logout", data={"csrf_token": csrf_token}, follow_redirects=False)
+
+
+def log_in_as_admin(client: TestClient, db: Session, username: str = "admin") -> None:
+    create_user(db, username, ADMIN_PASSWORD, is_admin=True)
+    response = log_in(client, username, ADMIN_PASSWORD)
+    assert response.status_code == 303

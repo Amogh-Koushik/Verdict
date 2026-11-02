@@ -85,6 +85,12 @@ def redis(settings: Settings) -> Iterator[Redis]:
 
 
 @pytest.fixture
-def client(settings: Settings, engine: Engine, redis: Redis) -> Iterator[TestClient]:
-    with TestClient(create_app(settings)) as test_client:
+def app_settings(settings: Settings, tmp_path: Path) -> Settings:
+    """Settings for one test, with its own empty folder for uploaded tests."""
+    return replace(settings, problems_dir=tmp_path / "problems")
+
+
+@pytest.fixture
+def client(app_settings: Settings, engine: Engine, redis: Redis) -> Iterator[TestClient]:
+    with TestClient(create_app(app_settings)) as test_client:
         yield test_client

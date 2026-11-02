@@ -12,10 +12,16 @@ from verdict.web.sessions import set_session_cookie
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
+
+def format_seconds(milliseconds: int) -> str:
+    return f"{milliseconds / 1000:g} s"
+
+
 # Starlette's default only escapes files ending in .html; this escapes every template.
 templates = Jinja2Templates(
     env=Environment(loader=FileSystemLoader(TEMPLATES_DIR), autoescape=True)
 )
+templates.env.filters["seconds"] = format_seconds
 
 
 def render(

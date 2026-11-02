@@ -10,6 +10,10 @@
   <header class="site-header">
     <a class="brand" href="/">Verdict</a>
     <nav>
+      <a href="/problems">Problems</a>
+      {% if current_user and current_user.is_admin %}
+        <a href="/admin/problems">Admin</a>
+      {% endif %}
       {% if current_user %}
         <span class="username">{{ current_user.username }}</span>
         <form method="post" action="/logout" class="inline">

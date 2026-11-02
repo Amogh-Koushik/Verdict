@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Problems · Verdict{% endblock %}
+{% block content %}
+  <h1>Problems</h1>
+  {% if problems %}
+    <table class="listing">
+      <thead><tr><th>Problem</th><th>Time limit</th><th>Memory limit</th></tr></thead>
+      <tbody>
+        {% for problem in problems %}
+          <tr>
+            <td>
+              <a href="/problems/{{ problem.slug }}">{{ problem.title }}</a>
+              {% if not problem.is_public %}<span class="badge">Not public</span>{% endif %}
+            </td>
+            <td>{{ problem.time_limit_ms | seconds }}</td>
+            <td>{{ problem.memory_limit_mb }} MB</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No problems have been published yet.</p>
+  {% endif %}
+{% endblock %}

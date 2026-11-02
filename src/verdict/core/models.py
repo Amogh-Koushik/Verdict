@@ -65,6 +65,11 @@ class Problem(Base):
     is_public: Mapped[bool] = mapped_column(default=False, server_default=false())
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
+    def time_limit_ms_for(self, language: Language, python_multiplier: float) -> int:
+        if language is Language.PYTHON:
+            return round(self.time_limit_ms * python_multiplier)
+        return self.time_limit_ms
+
 
 class ProblemTest(Base):
     __tablename__ = "problem_tests"
