@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Log in · Verdict{% endblock %}
+{% block content %}
+  <h1>Log in</h1>
+  {% include "_form_error.html" %}
+  <form method="post" action="/login" class="stacked">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Username <input name="username" value="{{ username }}" autocomplete="username" required autofocus></label>
+    <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+    <button type="submit">Log in</button>
+  </form>
+  <p>No account yet? <a href="/register">Register</a>.</p>
+{% endblock %}

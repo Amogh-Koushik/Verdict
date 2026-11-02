@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Verdict</h1>
+  <p>An online judge for college coding contests. Submit C++ or Python solutions and get a verdict within seconds.</p>
+  {% if current_user %}
+    <p>You are logged in as <strong>{{ current_user.username }}</strong>.</p>
+  {% else %}
+    <p><a href="/login">Log in</a> or <a href="/register">create an account</a> to submit solutions.</p>
+  {% endif %}
+{% endblock %}

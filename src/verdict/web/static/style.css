@@ -1,0 +1,103 @@
+:root {
+  --text: #1d1f23;
+  --muted: #5f6672;
+  --border: #d5d9e0;
+  --accent: #1f5fbf;
+  --error-bg: #fdecec;
+  --error-text: #9b1c1c;
+  --surface: #ffffff;
+  --page: #f6f7f9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--page);
+}
+
+a {
+  color: var(--accent);
+}
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.site-header nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.brand {
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.username {
+  color: var(--muted);
+}
+
+main {
+  max-width: 48rem;
+  margin: 2rem auto;
+  padding: 0 1.25rem;
+}
+
+form.inline {
+  display: inline;
+}
+
+form.stacked {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 22rem;
+}
+
+form.stacked label {
+  display: grid;
+  gap: 0.25rem;
+}
+
+input,
+button {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+button {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.form-error {
+  padding: 0.5rem 0.75rem;
+  background: var(--error-bg);
+  color: var(--error-text);
+  border-radius: 4px;
+}

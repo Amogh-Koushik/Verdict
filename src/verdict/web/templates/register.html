@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Register · Verdict{% endblock %}
+{% block content %}
+  <h1>Register</h1>
+  {% include "_form_error.html" %}
+  <form method="post" action="/register" class="stacked">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Username <input name="username" value="{{ username }}" autocomplete="username"
+      minlength="3" maxlength="32" pattern="[A-Za-z0-9_\-]+" required autofocus></label>
+    <label>Password <input name="password" type="password" autocomplete="new-password"
+      minlength="8" maxlength="128" required></label>
+    <label>Repeat password <input name="password_confirm" type="password" autocomplete="new-password"
+      minlength="8" maxlength="128" required></label>
+    <button type="submit">Create account</button>
+  </form>
+  <p>Already registered? <a href="/login">Log in</a>.</p>
+{% endblock %}

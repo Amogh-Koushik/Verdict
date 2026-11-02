@@ -9,6 +9,7 @@ def test_empty_environment_gives_documented_defaults() -> None:
     assert load_settings({}) == Settings()
     assert Settings().lease_seconds == 60
     assert Settings().queue_limit == 500
+    assert Settings().session_ttl_seconds == 7 * 24 * 60 * 60
 
 
 def test_environment_values_override_defaults_with_their_types() -> None:
@@ -18,6 +19,7 @@ def test_environment_values_override_defaults_with_their_types() -> None:
             "LOG_LEVEL": "debug",
             "PROBLEMS_DIR": "/srv/problems",
             "SESSION_COOKIE_SECURE": "true",
+            "SESSION_TTL_SECONDS": "3600",
             "LEASE_SECONDS": "90",
             "POLL_SECONDS": "0.5",
             "PYTHON_TIME_MULTIPLIER": "3",
@@ -27,6 +29,7 @@ def test_environment_values_override_defaults_with_their_types() -> None:
     assert settings.log_level == "DEBUG"
     assert settings.problems_dir == Path("/srv/problems")
     assert settings.session_cookie_secure is True
+    assert settings.session_ttl_seconds == 3600
     assert settings.lease_seconds == 90
     assert settings.poll_seconds == 0.5
     assert settings.python_time_multiplier == 3.0

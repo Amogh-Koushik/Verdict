@@ -15,6 +15,7 @@ class Settings:
     log_level: str = "INFO"
     problems_dir: Path = Path("/data/problems")
     session_cookie_secure: bool = False
+    session_ttl_seconds: int = 7 * 24 * 60 * 60
     lease_seconds: int = 60
     heartbeat_seconds: int = 15
     max_attempts: int = 3
@@ -33,6 +34,7 @@ def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
         log_level=env.get("LOG_LEVEL", defaults.log_level).upper(),
         problems_dir=Path(env.get("PROBLEMS_DIR", str(defaults.problems_dir))),
         session_cookie_secure=_bool(env, "SESSION_COOKIE_SECURE", defaults.session_cookie_secure),
+        session_ttl_seconds=_positive_int(env, "SESSION_TTL_SECONDS", defaults.session_ttl_seconds),
         lease_seconds=_positive_int(env, "LEASE_SECONDS", defaults.lease_seconds),
         heartbeat_seconds=_positive_int(env, "HEARTBEAT_SECONDS", defaults.heartbeat_seconds),
         max_attempts=_positive_int(env, "MAX_ATTEMPTS", defaults.max_attempts),
