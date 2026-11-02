@@ -1,4 +1,8 @@
-.PHONY: up down lint test
+.PHONY: runners up down lint test test-sandbox
+
+runners:
+	docker build -t verdict-runner-cpp:1 runners/cpp
+	docker build -t verdict-runner-python:1 runners/python
 
 up:
 	docker compose up --build -d --wait
@@ -13,3 +17,6 @@ lint:
 
 test:
 	uv run pytest
+
+test-sandbox:
+	uv run pytest tests/sandbox

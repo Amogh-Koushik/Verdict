@@ -7,6 +7,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "alembic>=1.20.0",
     "argon2-cffi>=25.1.0",
+    "docker>=7.2.0",
     "fastapi>=0.143.5",
     "jinja2>=3.1.6",
     "markdown-it-py>=4.2.0",
@@ -30,6 +31,7 @@ dev = [
     "mypy>=2.4.0",
     "pytest>=9.1.1",
     "ruff>=0.17.1",
+    "types-docker>=7.2.0.20261102",
 ]
 
 [tool.ruff]
@@ -40,7 +42,7 @@ target-version = "py312"
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "N", "S", "PT"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S105"]
+"tests/**" = ["S101", "S105", "S108"]
 
 [tool.mypy]
 strict = true
@@ -48,6 +50,6 @@ python_version = "3.12"
 files = ["src"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests/unit", "tests/integration"]
 addopts = "--strict-markers"
 filterwarnings = ["error"]

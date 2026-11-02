@@ -18,7 +18,7 @@ from verdict.core.db import Base, create_db_engine, create_session_factory
 from verdict.core.redis_client import create_redis
 from verdict.web.main import create_app
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TEST_DATABASE = "verdict_test"
 # Database 15 keeps test keys apart from a development stack, which uses database 0.
 TEST_REDIS_DB = 15

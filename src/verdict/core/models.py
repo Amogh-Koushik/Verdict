@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
+from pathlib import Path
 
 from sqlalchemy import (
     CheckConstraint,
@@ -69,6 +70,11 @@ class Problem(Base):
         if language is Language.PYTHON:
             return round(self.time_limit_ms * python_multiplier)
         return self.time_limit_ms
+
+
+def problem_tests_dir(problems_dir: Path, problem_id: int, version: int) -> Path:
+    """Where version `version` of a problem's tests is stored: {id}/v{version}/{i}.in and .out."""
+    return problems_dir / str(problem_id) / f"v{version}"
 
 
 class ProblemTest(Base):

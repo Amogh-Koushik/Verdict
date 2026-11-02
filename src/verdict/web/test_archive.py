@@ -10,7 +10,7 @@ from zipfile import BadZipFile, ZipFile, ZipInfo
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from verdict.core.models import Problem, ProblemTest
+from verdict.core.models import Problem, ProblemTest, problem_tests_dir
 
 MAX_TESTS = 50
 MAX_FILE_BYTES = 10 * 1024 * 1024
@@ -54,7 +54,7 @@ def store_test_archive(db: Session, problem_id: int, upload: BinaryIO, problems_
     staging = Path(tempfile.mkdtemp(prefix=f".v{version}-", dir=problem_dir))
     try:
         hashes = unpack_test_archive(upload, staging)
-        final = problem_dir / f"v{version}"
+        final = problem_tests_dir(problems_dir, problem.id, version)
         if final.exists():
             # Left by an upload whose commit failed; no problem_tests row refers to it.
             shutil.rmtree(final)

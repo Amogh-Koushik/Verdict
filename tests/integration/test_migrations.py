@@ -3,7 +3,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.runtime.migration import MigrationContext
 from sqlalchemy import Engine, inspect
 
-from tests.integration.conftest import recreate_database, run_alembic
+from tests.conftest import recreate_database, run_alembic
 from verdict.core.config import load_settings
 from verdict.core.db import Base, create_db_engine
 
