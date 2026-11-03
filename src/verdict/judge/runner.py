@@ -113,7 +113,8 @@ def _run_tests(sandbox: Sandbox, job: JudgeJob, limits: Limits) -> JudgeResult:
     oom_kills = _oom_kill_count(sandbox)
     time_ms = memory_kb = 0
     for idx in range(1, job.test_count + 1):
-        exit_status = sandbox.run(_test_script(job.language, idx, limits)).exit_code
+        script = _test_script(job.language, idx, limits)
+        exit_status = sandbox.run_and_kill_leftovers(script).exit_code
         report = sandbox.read_file(f"/box/out/{idx}.time").decode()
         oom_kills_after = _oom_kill_count(sandbox)
         stats = parse_time_report(report, exit_status, oom_killed=oom_kills_after > oom_kills)
@@ -132,7 +133,7 @@ def _test_script(language: Language, idx: int, limits: Limits) -> str:
     # ulimit -f counts 512-byte blocks in this shell; it stops a program that prints forever.
     return (
         f"ulimit -f {OUTPUT_LIMIT_BYTES // 512} && "
-        f"exec /usr/bin/time -f '%e %U %S %M' -o /box/out/{idx}.time "
+        f"/usr/bin/time -f '%e %U %S %M' -o /box/out/{idx}.time "
         f"timeout -s KILL {limits.wall_seconds:g} {RUN_COMMANDS[language]} "
         f"< /box/tests/{idx}.in > /box/out/{idx}.out 2> /dev/null"
     )

@@ -38,8 +38,31 @@ def test_container_starts_with_the_documented_settings(docker_client: DockerClie
         assert host["CapDrop"] == ["ALL"]
         assert host["SecurityOpt"] == ["no-new-privileges"]
         assert host["Tmpfs"] == {"/tmp": "size=16m"}
+        assert host["ReadonlyRootfs"] is True
+        assert host["IpcMode"] == "none"
+        assert host["Init"] is True
+        assert host["Ulimits"] == [{"Name": "msgqueue", "Soft": 0, "Hard": 0}]
+        assert [(mount["Type"], mount["Destination"]) for mount in container.attrs["Mounts"]] == [
+            ("volume", "/box")
+        ]
         assert host["Memory"] == host["MemorySwap"] == 512 * MB
         assert container.labels[WORKER_LABEL] == "sandbox-tests"
+
+
+def test_box_volume_is_removed_with_the_sandbox(docker_client: DockerClient) -> None:
+    with open_sandbox(docker_client, SPEC, deadline_seconds=60):
+        [container] = docker_client.containers.list(filters={"label": SUBMISSION_LABEL})
+        [box] = container.attrs["Mounts"]
+    assert box["Name"] not in {volume.name for volume in docker_client.volumes.list()}
+
+
+def test_processes_a_run_leaves_behind_are_killed(docker_client: DockerClient) -> None:
+    with open_sandbox(docker_client, SPEC, deadline_seconds=60) as sandbox:
+        result = sandbox.run_and_kill_leftovers("sleep 300 & sleep 300 & (exit 7)")
+        assert result.exit_code == 7
+        # Left: init, the idle command, and the shell doing the listing.
+        listing = sandbox.run("for entry in /proc/[0-9]*; do echo ${entry#/proc/}; done")
+        assert len(listing.output.split()) == 3
 
 
 def test_memory_is_lowered_to_the_limit_plus_headroom_before_tests(
