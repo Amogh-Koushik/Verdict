@@ -12,6 +12,8 @@ x-app: &app
 services:
   db:
     image: postgres:16
+    # Explicit grace periods everywhere: a host's default stop timeout can be shorter than 10 s.
+    stop_grace_period: 30s
     environment:
       POSTGRES_USER: verdict
       POSTGRES_PASSWORD: verdict
@@ -28,6 +30,7 @@ services:
 
   redis:
     image: redis:7
+    stop_grace_period: 10s
     ports:
       - "6379:6379"
     volumes:
@@ -47,6 +50,8 @@ services:
 
   web:
     <<: *app
+    # Uvicorn gives open requests up to 5 s to finish before it cancels them and exits.
+    stop_grace_period: 15s
     ports:
       - "8000:8000"
     volumes:

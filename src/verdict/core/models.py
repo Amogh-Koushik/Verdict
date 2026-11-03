@@ -157,5 +157,10 @@ class Submission(Base):
     started_at: Mapped[datetime | None]
     judged_at: Mapped[datetime | None]
 
+    @property
+    def is_pending(self) -> bool:
+        """True while the submission waits for, or is in, a judge."""
+        return self.status in (SubmissionStatus.QUEUED, SubmissionStatus.JUDGING)
+
 
 Index("ix_submissions_user_recent", Submission.user_id, Submission.created_at.desc())

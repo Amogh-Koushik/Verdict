@@ -1,0 +1,11 @@
+{% from "submissions/_status.html" import status %}
+<tr data-live-submission="{{ submission.id }}" {% if submission.is_pending %}data-pending{% endif %}
+    hx-get="/submissions/{{ submission.id }}/row" hx-trigger="submission-changed" hx-swap="outerHTML">
+  <td><a href="/submissions/{{ submission.id }}">{{ submission.id }}</a></td>
+  <td><a href="/problems/{{ problem.slug }}">{{ problem.title }}</a></td>
+  <td>{{ submission.language.value }}</td>
+  <td>{{ status(submission) }}</td>
+  <td>{% if submission.time_ms is not none %}{{ submission.time_ms }} ms{% endif %}</td>
+  <td>{% if submission.memory_kb is not none %}{{ submission.memory_kb }} KB{% endif %}</td>
+  <td>{{ submission.created_at | ist }}</td>
+</tr>

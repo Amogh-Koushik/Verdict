@@ -5,6 +5,9 @@ import uvicorn
 from verdict.core.config import load_settings
 from verdict.core.logs import configure_logging
 
+# Live-update streams end themselves on shutdown; any request still open after this is cancelled.
+GRACEFUL_SHUTDOWN_SECONDS = 5
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m verdict.web")
@@ -22,6 +25,7 @@ def main() -> None:
         port=args.port,
         workers=args.workers,
         log_config=None,
+        timeout_graceful_shutdown=GRACEFUL_SHUTDOWN_SECONDS,
     )
 
 

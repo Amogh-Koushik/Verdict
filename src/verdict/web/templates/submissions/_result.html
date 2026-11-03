@@ -1,0 +1,30 @@
+{% from "submissions/_status.html" import status %}
+<div data-live-submission="{{ submission.id }}" {% if submission.is_pending %}data-pending{% endif %}
+     hx-get="/submissions/{{ submission.id }}/result" hx-trigger="submission-changed" hx-swap="outerHTML">
+  <dl class="limits">
+    <dt>Problem</dt>
+    <dd><a href="/problems/{{ problem.slug }}">{{ problem.title }}</a></dd>
+    <dt>Result</dt>
+    <dd>{{ status(submission) }}</dd>
+    <dt>Language</dt>
+    <dd>{{ submission.language.value }}</dd>
+    {% if submission.time_ms is not none %}
+      <dt>Time</dt>
+      <dd>{{ submission.time_ms }} ms</dd>
+    {% endif %}
+    {% if submission.memory_kb is not none %}
+      <dt>Memory</dt>
+      <dd>{{ submission.memory_kb }} KB</dd>
+    {% endif %}
+    <dt>Submitted</dt>
+    <dd>{{ submission.created_at | ist }}</dd>
+    {% if submission.judged_at %}
+      <dt>Judged</dt>
+      <dd>{{ submission.judged_at | ist }}</dd>
+    {% endif %}
+  </dl>
+  {% if submission.compile_output %}
+    <h2>Compiler output</h2>
+    <pre class="code">{{ submission.compile_output }}</pre>
+  {% endif %}
+</div>

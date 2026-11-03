@@ -1,3 +1,4 @@
+import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -8,9 +9,10 @@ from fastapi.staticfiles import StaticFiles
 from verdict.core.config import Settings, load_settings
 from verdict.core.db import create_db_engine, create_session_factory
 from verdict.core.logs import configure_logging
-from verdict.core.redis_client import create_redis
-from verdict.web import admin_problems, auth, health, home, problems, submissions
+from verdict.core.redis_client import create_async_redis, create_redis
+from verdict.web import admin_problems, auth, health, home, live, problems, submissions
 from verdict.web.errors import install_error_pages
+from verdict.web.live import end_streams_on_shutdown
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -25,9 +27,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.engine = create_db_engine(settings.database_url)
         app.state.session_factory = create_session_factory(app.state.engine)
         app.state.redis = create_redis(settings.redis_url)
+        app.state.async_redis = create_async_redis(settings.redis_url)
+        app.state.stopping = threading.Event()
+        end_streams_on_shutdown(app.state.stopping)
         try:
             yield
         finally:
+            await app.state.async_redis.aclose()
             app.state.redis.close()
             app.state.engine.dispose()
 
@@ -38,6 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth.router)
     app.include_router(problems.router)
     app.include_router(submissions.router)
+    app.include_router(live.router)
     app.include_router(admin_problems.router)
     install_error_pages(app)
     return app

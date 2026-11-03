@@ -1,34 +1,11 @@
 {% extends "base.html" %}
-{% from "submissions/_status.html" import status %}
 {% block title %}Submission {{ submission.id }} · Verdict{% endblock %}
+{% block scripts %}{% include "submissions/_live_scripts.html" %}{% endblock %}
 {% block content %}
   <h1>Submission {{ submission.id }}</h1>
-  <dl class="limits">
-    <dt>Problem</dt>
-    <dd><a href="/problems/{{ problem.slug }}">{{ problem.title }}</a></dd>
-    <dt>Result</dt>
-    <dd id="submission-result">{{ status(submission) }}</dd>
-    <dt>Language</dt>
-    <dd>{{ submission.language.value }}</dd>
-    {% if submission.time_ms is not none %}
-      <dt>Time</dt>
-      <dd>{{ submission.time_ms }} ms</dd>
-    {% endif %}
-    {% if submission.memory_kb is not none %}
-      <dt>Memory</dt>
-      <dd>{{ submission.memory_kb }} KB</dd>
-    {% endif %}
-    <dt>Submitted</dt>
-    <dd>{{ submission.created_at | ist }}</dd>
-    {% if submission.judged_at %}
-      <dt>Judged</dt>
-      <dd>{{ submission.judged_at | ist }}</dd>
-    {% endif %}
-  </dl>
-  {% if submission.compile_output %}
-    <h2>Compiler output</h2>
-    <pre class="code">{{ submission.compile_output }}</pre>
-  {% endif %}
+  <div {% if submission.is_pending %}data-live-url="/live/submissions/{{ submission.id }}"{% endif %}>
+    {% include "submissions/_result.html" %}
+  </div>
   <h2>Source code</h2>
   <pre class="code">{{ submission.source }}</pre>
 {% endblock %}

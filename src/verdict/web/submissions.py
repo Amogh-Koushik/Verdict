@@ -110,21 +110,48 @@ def my_submissions(request: Request, viewer: ViewerDep, db: DbDep) -> Response:
         .order_by(Submission.id.desc())
         .limit(RECENT_SUBMISSIONS)
     ).all()
-    return render(request, viewer, "submissions/list.html", {"rows": rows})
+    pending_ids = [submission.id for submission, _ in rows if submission.is_pending]
+    context = {"rows": rows, "pending_ids": pending_ids}
+    return render(request, viewer, "submissions/list.html", context)
 
 
 @router.get("/submissions/{submission_id}")
 def submission_page(
     request: Request, submission_id: int, viewer: ViewerDep, db: DbDep
 ) -> HTMLResponse:
+    submission, problem = _viewable_submission(db, viewer.user, submission_id)
+    context = {"submission": submission, "problem": problem}
+    return render(request, viewer, "submissions/view.html", context)
+
+
+@router.get("/submissions/{submission_id}/row")
+def submission_row(
+    request: Request, submission_id: int, viewer: ViewerDep, db: DbDep
+) -> HTMLResponse:
+    """The submission's row in the list, re-fetched by the page when the submission changes."""
+    submission, problem = _viewable_submission(db, viewer.user, submission_id)
+    context = {"submission": submission, "problem": problem}
+    return render(request, viewer, "submissions/_row.html", context)
+
+
+@router.get("/submissions/{submission_id}/result")
+def submission_result(
+    request: Request, submission_id: int, viewer: ViewerDep, db: DbDep
+) -> HTMLResponse:
+    """The result part of the submission page, re-fetched when the submission changes."""
+    submission, problem = _viewable_submission(db, viewer.user, submission_id)
+    context = {"submission": submission, "problem": problem}
+    return render(request, viewer, "submissions/_result.html", context)
+
+
+def _viewable_submission(
+    db: Session, user: User | None, submission_id: int
+) -> tuple[Submission, Problem]:
     submission = db.get(Submission, submission_id)
-    user = viewer.user
     # Only the author and administrators may see a submission and its source code.
     if submission is None or user is None or not (user.is_admin or submission.user_id == user.id):
         raise HTTPException(status_code=404)
-    problem = db.get_one(Problem, submission.problem_id)
-    context = {"submission": submission, "problem": problem}
-    return render(request, viewer, "submissions/view.html", context)
+    return submission, db.get_one(Problem, submission.problem_id)
 
 
 def _visible_problem(db: Session, user: User, slug: str) -> Problem:
