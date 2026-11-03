@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ contest.title }} · Verdict{% endblock %}
+{% block scripts %}<script src="/static/countdown.js" defer></script>{% endblock %}
+{% block content %}
+  <h1>{{ contest.title }}</h1>
+  <dl class="limits">
+    <dt>Starts</dt>
+    <dd>{{ contest.starts_at | ist }}</dd>
+    <dt>Ends</dt>
+    <dd>{{ contest.ends_at | ist }}</dd>
+  </dl>
+  {% include "contests/_countdown.html" %}
+  {% if phase != "upcoming" %}
+    <p><a href="/contests/{{ contest.slug }}/scoreboard">Scoreboard</a></p>
+  {% endif %}
+  {% if contest_problems %}
+    <h2>Problems</h2>
+    {% if phase == "upcoming" %}
+      <p class="badge">Hidden from contestants until the contest starts.</p>
+    {% endif %}
+    <table class="listing">
+      <thead><tr><th></th><th>Problem</th><th>Time limit</th><th>Memory limit</th></tr></thead>
+      <tbody>
+        {% for label, problem in contest_problems %}
+          <tr>
+            <td>{{ label }}</td>
+            <td><a href="/contests/{{ contest.slug }}/problems/{{ label }}">{{ problem.title }}</a></td>
+            <td>{{ problem.time_limit_ms | seconds }}</td>
+            <td>{{ problem.memory_limit_mb }} MB</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <h2>Submit</h2>
+    {% if current_user %}
+      {% include "contests/_practice_notice.html" %}
+      {% include "submissions/_form.html" %}
+    {% else %}
+      <p><a href="/login">Log in</a> to submit a solution.</p>
+    {% endif %}
+  {% elif phase == "upcoming" %}
+    <p>The problems appear here when the contest starts.</p>
+  {% else %}
+    <p>This contest has no problems.</p>
+  {% endif %}
+{% endblock %}

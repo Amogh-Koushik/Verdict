@@ -12,11 +12,13 @@ from fastapi.responses import StreamingResponse
 from redis.asyncio import Redis as AsyncRedis
 from redis.asyncio.client import PubSub
 from redis.exceptions import RedisError
+from redis.exceptions import TimeoutError as RedisTimeoutError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from verdict.core.events import submission_channel
-from verdict.core.models import Submission
+from verdict.core.db import database_now
+from verdict.core.events import contest_channel, submission_channel
+from verdict.core.models import Contest, ContestPhase, Submission
 from verdict.web.deps import get_viewer
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,7 @@ KEEPALIVE_SECONDS = 15.0
 # How soon an open stream notices that the server is shutting down.
 STOP_CHECK_SECONDS = 1.0
 RECONNECT_MILLISECONDS = 3000
+SUBSCRIBE_TIMEOUT_SECONDS = 3.0
 MAX_WATCHED_SUBMISSIONS = 50
 STREAM_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 
@@ -46,6 +49,14 @@ async def live_submissions(request: Request, ids: str = "") -> StreamingResponse
     if len(submission_ids) > MAX_WATCHED_SUBMISSIONS:
         raise HTTPException(status_code=400, detail="too many submissions in one stream")
     return await _stream_submissions(request, submission_ids)
+
+
+@router.get("/live/contests/{contest_id}")
+async def live_contest(request: Request, contest_id: int) -> StreamingResponse:
+    """Changes to a contest's scoreboard, which anyone may watch once the contest has started."""
+    if not await run_in_threadpool(_may_watch_contest, request, contest_id):
+        raise HTTPException(status_code=404)
+    return await _stream(request, [contest_channel(contest_id)])
 
 
 def end_streams_on_shutdown(stopping: threading.Event) -> None:
@@ -68,7 +79,7 @@ async def event_stream(
         while not stopping.is_set():
             until_keepalive = last_sent + keepalive_seconds - time.monotonic()
             wait = max(0.0, min(until_keepalive, STOP_CHECK_SECONDS))
-            message = await pubsub.get_message(timeout=wait)
+            message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=wait)
             if message is not None:
                 yield f"data: {message['data']}\n\n"
                 last_sent = time.monotonic()
@@ -83,13 +94,18 @@ async def event_stream(
 
 
 async def _stream_submissions(request: Request, submission_ids: list[int]) -> StreamingResponse:
-    if not await run_in_threadpool(_may_watch, request, submission_ids):
+    if not await run_in_threadpool(_may_watch_submissions, request, submission_ids):
         raise HTTPException(status_code=404)
+    return await _stream(request, [submission_channel(sid) for sid in submission_ids])
+
+
+async def _stream(request: Request, channels: list[str]) -> StreamingResponse:
     redis: AsyncRedis = request.app.state.async_redis
-    pubsub = redis.pubsub(ignore_subscribe_messages=True)
+    pubsub = redis.pubsub()
     try:
         # Subscribed before the headers go out: the browser treats them as "listening now".
-        await pubsub.subscribe(*(submission_channel(sid) for sid in submission_ids))
+        await pubsub.subscribe(*channels)
+        await _confirm_subscribed(pubsub, len(channels))
     except RedisError:
         await _close(pubsub)
         logger.warning("live stream could not subscribe", exc_info=True)
@@ -99,6 +115,19 @@ async def _stream_submissions(request: Request, submission_ids: list[int]) -> St
         media_type="text/event-stream",
         headers=STREAM_HEADERS,
     )
+
+
+async def _confirm_subscribed(pubsub: PubSub, channel_count: int) -> None:
+    # subscribe() only sends the command; Redis is listening once it confirms every channel.
+    deadline = time.monotonic() + SUBSCRIBE_TIMEOUT_SECONDS
+    confirmed = 0
+    while confirmed < channel_count:
+        left = deadline - time.monotonic()
+        message = await pubsub.get_message(timeout=left) if left > 0 else None
+        if message is None:
+            raise RedisTimeoutError("Redis did not confirm the subscription in time")
+        if message["type"] == "subscribe":
+            confirmed += 1
 
 
 def _set_then(
@@ -117,7 +146,7 @@ async def _close(pubsub: PubSub) -> None:
     await pubsub.aclose()  # type: ignore[no-untyped-call]
 
 
-def _may_watch(request: Request, submission_ids: list[int]) -> bool:
+def _may_watch_submissions(request: Request, submission_ids: list[int]) -> bool:
     # Its own short session: a request-scoped one would hold a pooled connection for the
     # whole life of the stream.
     session_factory: sessionmaker[Session] = request.app.state.session_factory
@@ -131,3 +160,15 @@ def _may_watch(request: Request, submission_ids: list[int]) -> bool:
     if len(owners) != len(submission_ids):
         return False
     return user.is_admin or all(owner == user.id for owner in owners)
+
+
+def _may_watch_contest(request: Request, contest_id: int) -> bool:
+    session_factory: sessionmaker[Session] = request.app.state.session_factory
+    with session_factory() as db:
+        contest = db.get(Contest, contest_id)
+        if contest is None:
+            return False
+        if contest.phase_at(database_now(db)) is not ContestPhase.UPCOMING:
+            return True
+        user = get_viewer(request, request.app.state.redis, db).user
+        return user is not None and user.is_admin

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Scoreboard · {{ contest.title }} · Verdict{% endblock %}
+{% block scripts %}
+  <script src="/static/countdown.js" defer></script>
+  {% if scoreboard %}
+    <script src="/static/vendor/htmx-2.0.11.min.js" defer></script>
+    <script src="/static/scoreboard.js" defer></script>
+  {% endif %}
+{% endblock %}
+{% block content %}
+  <p class="breadcrumb"><a href="/contests/{{ contest.slug }}">{{ contest.title }}</a> · Scoreboard</p>
+  <h1>Scoreboard</h1>
+  {% include "contests/_countdown.html" %}
+  {% if scoreboard %}
+    <div class="table-scroll" data-live-url="/live/contests/{{ contest.id }}"
+         hx-get="/contests/{{ contest.slug }}/scoreboard/table" hx-trigger="contest-changed" hx-swap="innerHTML">
+      {% include "contests/_scoreboard_table.html" %}
+    </div>
+  {% else %}
+    <p>The scoreboard opens when the contest starts.</p>
+  {% endif %}
+{% endblock %}

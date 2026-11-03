@@ -1,9 +1,26 @@
 {% extends "base.html" %}
 {% block title %}{{ problem.title }} · Verdict{% endblock %}
+{% block scripts %}{% if seconds_left %}<script src="/static/countdown.js" defer></script>{% endif %}{% endblock %}
 {% block content %}
-  <h1>{{ problem.title }}</h1>
-  {% if not problem.is_public %}
-    <p class="badge">Not public: only administrators and contest participants can see this problem.</p>
+  {% if contest %}
+    <p class="breadcrumb">
+      <a href="/contests/{{ contest.slug }}">{{ contest.title }}</a> · Problem {{ label }}
+      {% if seconds_left %}
+        · <span data-countdown-seconds="{{ seconds_left }}" data-at-zero="The contest has ended.">Ends in <time>{{ seconds_left | clock }}</time></span>
+      {% endif %}
+    </p>
+    <h1>{{ label }}. {{ problem.title }}</h1>
+  {% else %}
+    <h1>{{ problem.title }}</h1>
+    {% if not problem.is_public %}
+      <p class="badge">Not public: only administrators and contest participants can see this problem.</p>
+    {% endif %}
+    {% for running in running_contests %}
+      <p class="notice">
+        This problem is part of <a href="/contests/{{ running.slug }}">{{ running.title }}</a>, which is running now.
+        Submit from the contest's page for your solution to count there; submissions here are practice.
+      </p>
+    {% endfor %}
   {% endif %}
   <dl class="limits">
     <dt>Time limit</dt>
@@ -23,19 +40,7 @@
   {% elif not problem.tests_version %}
     <p>This problem has no tests yet, so it can't be judged.</p>
   {% else %}
-    {% include "_form_error.html" %}
-    <form method="post" action="/problems/{{ problem.slug }}/submit" enctype="multipart/form-data" class="stacked wide">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <label>Language
-        <select name="language">
-          {% for value, name in languages.items() %}
-            <option value="{{ value }}" {% if value == chosen_language %}selected{% endif %}>{{ name }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label>Source code <textarea name="source" rows="16" spellcheck="false">{{ source }}</textarea></label>
-      <label>Or upload a file (used instead of the text above) <input type="file" name="source_file" accept=".cpp,.cc,.py,text/plain"></label>
-      <button type="submit">Submit</button>
-    </form>
+    {% if contest %}{% include "contests/_practice_notice.html" %}{% endif %}
+    {% include "submissions/_form.html" %}
   {% endif %}
 {% endblock %}

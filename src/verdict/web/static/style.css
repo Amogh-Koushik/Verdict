@@ -187,3 +187,66 @@ pre.code {
 .verdict-se {
   color: var(--error-text);
 }
+
+.notice {
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+}
+
+.breadcrumb,
+.note {
+  color: var(--muted);
+}
+
+.countdown {
+  font-weight: 600;
+}
+
+.countdown time {
+  font-variant-numeric: tabular-nums;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+table.scoreboard td,
+table.scoreboard th {
+  font-variant-numeric: tabular-nums;
+}
+
+table.scoreboard .cell {
+  min-width: 3rem;
+  text-align: center;
+}
+
+.cell small {
+  display: block;
+  color: var(--muted);
+}
+
+.cell-accepted {
+  color: #17663a;
+  background: #e6f4ea;
+}
+
+.cell-rejected {
+  color: var(--error-text);
+  background: var(--error-bg);
+}
+
+.cell-pending {
+  color: var(--muted);
+  background: var(--page);
+}
+
+tr.own-row td {
+  font-weight: 600;
+}
+
+nav.subnav {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}

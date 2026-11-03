@@ -10,7 +10,17 @@ from verdict.core.config import Settings, load_settings
 from verdict.core.db import create_db_engine, create_session_factory
 from verdict.core.logs import configure_logging
 from verdict.core.redis_client import create_async_redis, create_redis
-from verdict.web import admin_problems, auth, health, home, live, problems, submissions
+from verdict.web import (
+    admin_contests,
+    admin_problems,
+    auth,
+    contests,
+    health,
+    home,
+    live,
+    problems,
+    submissions,
+)
 from verdict.web.errors import install_error_pages
 from verdict.web.live import end_streams_on_shutdown
 
@@ -44,7 +54,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth.router)
     app.include_router(problems.router)
     app.include_router(submissions.router)
+    app.include_router(contests.router)
     app.include_router(live.router)
     app.include_router(admin_problems.router)
+    app.include_router(admin_contests.router)
     install_error_pages(app)
     return app

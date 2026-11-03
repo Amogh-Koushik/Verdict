@@ -1,0 +1,7 @@
+{% if phase == "upcoming" %}
+  <p class="countdown" data-countdown-seconds="{{ seconds_left }}" data-reload-at-zero>Starts in <time>{{ seconds_left | clock }}</time></p>
+{% elif phase == "running" %}
+  <p class="countdown" data-countdown-seconds="{{ seconds_left }}" data-at-zero="The contest has ended.">Ends in <time>{{ seconds_left | clock }}</time></p>
+{% else %}
+  <p class="countdown">The contest has ended.</p>
+{% endif %}

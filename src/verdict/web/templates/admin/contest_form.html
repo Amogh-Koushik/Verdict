@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% set heading = "Edit " ~ contest.title if contest else "New contest" %}
+{% set action = "/admin/contests/%d/edit" % contest.id if contest else "/admin/contests/new" %}
+{% block title %}{{ heading }} · Admin · Verdict{% endblock %}
+{% block content %}
+  {% include "admin/_nav.html" %}
+  <h1>{{ heading }}</h1>
+  {% include "_form_error.html" %}
+  <form method="post" action="{{ action }}" class="stacked">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Slug (used in the address)
+      <input name="slug" value="{{ form.slug }}" maxlength="64" pattern="[a-z0-9]+(-[a-z0-9]+)*" required>
+    </label>
+    <label>Title <input name="title" value="{{ form.title }}" maxlength="200" required></label>
+    <label>Starts (IST) <input type="datetime-local" name="starts_at" value="{{ form.starts_at }}" required></label>
+    <label>Ends (IST) <input type="datetime-local" name="ends_at" value="{{ form.ends_at }}" required></label>
+    <button type="submit">{{ "Save changes" if contest else "Create contest" }}</button>
+  </form>
+  {% if contest %}
+    <h2>Problems</h2>
+    <p>Contestants see these problems, and they become visible on the problem list, once the contest starts.</p>
+    {% if problems_error %}<p class="form-error" role="alert">{{ problems_error }}</p>{% endif %}
+    {% if attached %}
+      <table class="listing">
+        <thead><tr><th>Label</th><th>Problem</th><th>Tests version</th><th></th></tr></thead>
+        <tbody>
+          {% for label, problem in attached %}
+            <tr>
+              <td>{{ label }}</td>
+              <td><a href="/admin/problems/{{ problem.id }}/edit">{{ problem.title }}</a></td>
+              <td>{{ problem.tests_version if problem.tests_version else "No tests" }}</td>
+              <td>
+                <form method="post" action="/admin/contests/{{ contest.id }}/problems/{{ label }}/remove" class="inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button type="submit" class="link-button">Remove</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No problems yet.</p>
+    {% endif %}
+    {% if free_labels and available_problems %}
+      <form method="post" action="/admin/contests/{{ contest.id }}/problems" class="stacked">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label>Label
+          <select name="label">
+            {% for label in free_labels %}<option>{{ label }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Problem
+          <select name="problem_id">
+            {% for problem in available_problems %}
+              <option value="{{ problem.id }}">{{ problem.title }} ({{ problem.slug }})</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit">Add problem</button>
+      </form>
+    {% elif not available_problems %}
+      <p>Every problem is already in this contest. <a href="/admin/problems/new">Create a problem</a> to add another.</p>
+    {% endif %}
+  {% endif %}
+{% endblock %}

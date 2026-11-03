@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, ClassVar
 
-from sqlalchemy import DateTime, Engine, MetaData, create_engine, text
+from sqlalchemy import DateTime, Engine, MetaData, create_engine, func, select, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.types import TypeEngine
 
@@ -36,3 +36,12 @@ def create_session_factory(engine: Engine) -> sessionmaker[Session]:
 def ping_database(engine: Engine) -> None:
     with engine.connect() as connection:
         connection.execute(text("SELECT 1"))
+
+
+def database_now(db: Session) -> datetime:
+    """The database's clock, which also stamps every row's created_at.
+
+    Postgres keeps now() fixed for a whole transaction, so a row inserted later in the same
+    transaction gets exactly this time.
+    """
+    return db.scalars(select(func.now())).one()

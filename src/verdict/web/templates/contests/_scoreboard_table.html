@@ -1,0 +1,36 @@
+{% if scoreboard.rows %}
+  <table class="listing scoreboard">
+    <thead>
+      <tr>
+        <th>Rank</th><th>Contestant</th><th>Solved</th><th>Penalty</th>
+        {% for label in scoreboard.labels %}
+          <th class="cell"><a href="/contests/{{ contest.slug }}/problems/{{ label }}">{{ label }}</a></th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in scoreboard.rows %}
+        <tr {% if current_user and current_user.id == row.user_id %}class="own-row"{% endif %}>
+          <td>{{ row.rank }}</td>
+          <td>{{ row.username }}</td>
+          <td>{{ row.solved }}</td>
+          <td>{{ row.penalty }}</td>
+          {% for cell in row.cells %}
+            {% if cell.accepted %}
+              <td class="cell cell-accepted">{{ cell.mark }}<small>{{ cell.accepted_minute }}</small></td>
+            {% elif cell.pending %}
+              <td class="cell cell-pending" title="Still being judged">{{ cell.mark }}</td>
+            {% elif cell.rejected %}
+              <td class="cell cell-rejected">{{ cell.mark }}</td>
+            {% else %}
+              <td class="cell"></td>
+            {% endif %}
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">Penalty: minutes from the start to each first accepted solution, plus 20 for every earlier rejected attempt. Compilation errors cost nothing.</p>
+{% else %}
+  <p>Nobody has submitted yet.</p>
+{% endif %}

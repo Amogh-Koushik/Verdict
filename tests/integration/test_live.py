@@ -4,6 +4,7 @@ import signal
 import threading
 import time
 from collections.abc import Iterator
+from datetime import timedelta
 
 import httpx2
 import pytest
@@ -12,6 +13,7 @@ from redis import Redis
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
+from tests.integration.contests import add_contest
 from tests.integration.live_server import serve
 from tests.integration.submissions import add_submissions
 from verdict.core.accounts import create_user
@@ -44,6 +46,13 @@ def author_of(db: Session, submission_id: int) -> int:
 
 def stream_lines(response: httpx2.Response) -> Iterator[str]:
     return (line for line in response.iter_lines() if line)
+
+
+def wait_for_subscribers(redis: Redis, channel: str, count: int) -> None:
+    """Wait up to 5 s for `channel` to have `count` subscribers; streams close asynchronously."""
+    deadline = time.monotonic() + 5
+    while redis.pubsub_numsub(channel) != [(channel, count)] and time.monotonic() < deadline:
+        time.sleep(0.05)
 
 
 def test_an_open_stream_receives_the_event_when_a_verdict_lands(
@@ -112,9 +121,7 @@ def test_closing_the_stream_releases_its_redis_subscription(
     ):
         next(stream_lines(response))
         assert redis.pubsub_numsub(channel) == [(channel, 1)]
-    deadline = time.monotonic() + 5
-    while redis.pubsub_numsub(channel) != [(channel, 0)] and time.monotonic() < deadline:
-        time.sleep(0.1)
+    wait_for_subscribers(redis, channel, 0)
     assert redis.pubsub_numsub(channel) == [(channel, 0)]
 
 
@@ -156,6 +163,34 @@ def test_a_malformed_list_of_submissions_is_refused(
     session = create_session(redis, author_of(db, submission_id), app_settings.session_ttl_seconds)
     client.cookies.set(SESSION_COOKIE, session.token)
     assert client.get(f"/live/submissions?ids={ids}").status_code == 400
+
+
+def test_anyone_can_watch_a_started_contest_and_hears_when_a_verdict_lands(
+    server: str, db: Session, redis: Redis
+) -> None:
+    contest = add_contest(db, starts_in=-timedelta(minutes=5))
+    with (
+        httpx2.Client(base_url=server, timeout=5) as anonymous,
+        anonymous.stream("GET", f"/live/contests/{contest.id}") as response,
+    ):
+        lines = stream_lines(response)
+        assert next(lines) == "retry: 3000"
+        publish_submission_changed(redis, 41, contest.id)
+        assert json.loads(next(lines).removeprefix("data: ")) == {"contest_id": contest.id}
+
+
+def test_only_an_admin_can_watch_a_contest_before_it_starts(
+    server: str, client: TestClient, db: Session, redis: Redis, app_settings: Settings
+) -> None:
+    contest = add_contest(db, starts_in=timedelta(minutes=5))
+    assert client.get(f"/live/contests/{contest.id}").status_code == 404
+    assert client.get(f"/live/contests/{contest.id + 1}").status_code == 404
+    admin = create_user(db, "admin", "a long enough password", is_admin=True)
+    with (
+        browser_for(redis, app_settings, server, admin.id) as browser,
+        browser.stream("GET", f"/live/contests/{contest.id}") as response,
+    ):
+        assert response.status_code == 200
 
 
 def test_an_idle_stream_sends_keepalive_comments_and_still_delivers_events(

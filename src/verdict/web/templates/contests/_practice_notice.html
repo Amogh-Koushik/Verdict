@@ -1,0 +1,5 @@
+{% if phase == "upcoming" %}
+  <p class="notice">The contest hasn't started, so submissions now are practice.</p>
+{% elif phase == "ended" %}
+  <p class="notice">The contest has ended, so submissions now are practice and don't count for it.</p>
+{% endif %}

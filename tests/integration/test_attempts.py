@@ -1,12 +1,10 @@
 import json
-import time
-from typing import Any
 
 from redis import Redis
-from redis.client import PubSub
 from sqlalchemy import Engine, update
 from sqlalchemy.orm import Session
 
+from tests.integration.events import next_event
 from tests.integration.submissions import add_submissions
 from verdict.core.config import Settings
 from verdict.core.events import submission_channel
@@ -14,16 +12,6 @@ from verdict.core.models import Submission
 from verdict.core.verdicts import SubmissionStatus, Verdict
 from verdict.judge.queue import claim_submission
 from verdict.judge.worker import claim_next_submission
-
-
-def next_event(events: PubSub, timeout_seconds: float = 2) -> dict[str, Any] | None:
-    # get_message returns None for the subscribe confirmation, so keep reading until the deadline.
-    deadline = time.monotonic() + timeout_seconds
-    while time.monotonic() < deadline:
-        message = events.get_message(timeout=deadline - time.monotonic())
-        if message is not None:
-            return message
-    return None
 
 
 def stall_on_every_attempt(engine: Engine, submission_id: int, attempts: int) -> None:

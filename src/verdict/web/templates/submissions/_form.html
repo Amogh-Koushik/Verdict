@@ -1,0 +1,25 @@
+{% include "_form_error.html" %}
+<form method="post" action="{{ submit_url }}" enctype="multipart/form-data" class="stacked wide">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% if contest_problems %}
+    <label>Problem
+      <select name="label">
+        {% for entry_label, entry_problem in contest_problems %}
+          <option value="{{ entry_label }}">{{ entry_label }}. {{ entry_problem.title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  {% elif label %}
+    <input type="hidden" name="label" value="{{ label }}">
+  {% endif %}
+  <label>Language
+    <select name="language">
+      {% for value, name in languages.items() %}
+        <option value="{{ value }}" {% if value == chosen_language %}selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Source code <textarea name="source" rows="16" spellcheck="false">{{ source }}</textarea></label>
+  <label>Or upload a file (used instead of the text above) <input type="file" name="source_file" accept=".cpp,.cc,.py,text/plain"></label>
+  <button type="submit">Submit</button>
+</form>

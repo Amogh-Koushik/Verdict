@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Problems · Admin · Verdict{% endblock %}
 {% block content %}
+  {% include "admin/_nav.html" %}
   <h1>Problems</h1>
   <p><a href="/admin/problems/new">New problem</a></p>
   {% if problems %}

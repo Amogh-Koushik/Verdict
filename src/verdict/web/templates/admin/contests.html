@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Contests · Admin · Verdict{% endblock %}
+{% block content %}
+  {% include "admin/_nav.html" %}
+  <h1>Contests</h1>
+  <p><a href="/admin/contests/new">New contest</a></p>
+  {% if contests %}
+    <table class="listing">
+      <thead><tr><th>Slug</th><th>Title</th><th>Starts</th><th>Ends</th><th></th></tr></thead>
+      <tbody>
+        {% for contest in contests %}
+          <tr>
+            <td><a href="/contests/{{ contest.slug }}">{{ contest.slug }}</a></td>
+            <td>{{ contest.title }}</td>
+            <td>{{ contest.starts_at | ist }}</td>
+            <td>{{ contest.ends_at | ist }}</td>
+            <td>
+              <a href="/admin/contests/{{ contest.id }}/edit">Edit</a>
+              <a href="/contests/{{ contest.slug }}/scoreboard">Scoreboard</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No contests yet.</p>
+  {% endif %}
+{% endblock %}

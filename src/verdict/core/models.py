@@ -89,6 +89,12 @@ class ProblemTest(Base):
     output_sha256: Mapped[str] = mapped_column(String(64))
 
 
+class ContestPhase(StrEnum):
+    UPCOMING = "upcoming"
+    RUNNING = "running"
+    ENDED = "ended"
+
+
 class Contest(Base):
     __tablename__ = "contests"
     __table_args__ = (CheckConstraint("ends_at > starts_at", name="ends_after_start"),)
@@ -99,6 +105,14 @@ class Contest(Base):
     starts_at: Mapped[datetime]
     ends_at: Mapped[datetime]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    def phase_at(self, now: datetime) -> ContestPhase:
+        """The window includes its start and excludes its end."""
+        if now < self.starts_at:
+            return ContestPhase.UPCOMING
+        if now < self.ends_at:
+            return ContestPhase.RUNNING
+        return ContestPhase.ENDED
 
 
 class ContestProblem(Base):

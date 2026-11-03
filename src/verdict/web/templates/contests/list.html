@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Contests · Verdict{% endblock %}
+{% macro contest_table(contests) %}
+  <table class="listing">
+    <thead><tr><th>Contest</th><th>Starts</th><th>Ends</th></tr></thead>
+    <tbody>
+      {% for contest in contests %}
+        <tr>
+          <td><a href="/contests/{{ contest.slug }}">{{ contest.title }}</a></td>
+          <td>{{ contest.starts_at | ist }}</td>
+          <td>{{ contest.ends_at | ist }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+{% block content %}
+  <h1>Contests</h1>
+  {% if not (running or upcoming or ended) %}
+    <p>No contests have been scheduled yet.</p>
+  {% endif %}
+  {% if running %}
+    <h2>Running now</h2>
+    {{ contest_table(running) }}
+  {% endif %}
+  {% if upcoming %}
+    <h2>Upcoming</h2>
+    {{ contest_table(upcoming) }}
+  {% endif %}
+  {% if ended %}
+    <h2>Past</h2>
+    {{ contest_table(ended) }}
+  {% endif %}
+{% endblock %}
