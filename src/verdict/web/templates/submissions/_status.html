@@ -1,0 +1,19 @@
+{% set verdict_names = {
+  "AC": "Accepted",
+  "WA": "Wrong answer",
+  "TLE": "Time limit exceeded",
+  "MLE": "Memory limit exceeded",
+  "RE": "Runtime error",
+  "CE": "Compilation error",
+  "SE": "System error",
+} %}
+{% macro status(submission) -%}
+  {% if submission.verdict %}
+    <span class="verdict verdict-{{ submission.verdict.value | lower }}" title="{{ verdict_names[submission.verdict.value] }}">{{ submission.verdict.value }}</span>
+    {%- if submission.failed_test %} on test {{ submission.failed_test }}{% endif %}
+  {% elif submission.status.value == "judging" %}
+    <span class="verdict">Judging…</span>
+  {% else %}
+    <span class="verdict">Queued</span>
+  {% endif %}
+{%- endmacro %}

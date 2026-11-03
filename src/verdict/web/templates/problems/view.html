@@ -17,4 +17,25 @@
   <article class="statement">
     {{ statement }}
   </article>
+  <h2>Submit</h2>
+  {% if not current_user %}
+    <p><a href="/login">Log in</a> to submit a solution.</p>
+  {% elif not problem.tests_version %}
+    <p>This problem has no tests yet, so it can't be judged.</p>
+  {% else %}
+    {% include "_form_error.html" %}
+    <form method="post" action="/problems/{{ problem.slug }}/submit" enctype="multipart/form-data" class="stacked wide">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Language
+        <select name="language">
+          {% for value, name in languages.items() %}
+            <option value="{{ value }}" {% if value == chosen_language %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Source code <textarea name="source" rows="16" spellcheck="false">{{ source }}</textarea></label>
+      <label>Or upload a file (used instead of the text above) <input type="file" name="source_file" accept=".cpp,.cc,.py,text/plain"></label>
+      <button type="submit">Submit</button>
+    </form>
+  {% endif %}
 {% endblock %}

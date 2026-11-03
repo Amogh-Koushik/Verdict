@@ -15,6 +15,7 @@
         <a href="/admin/problems">Admin</a>
       {% endif %}
       {% if current_user %}
+        <a href="/submissions">My submissions</a>
         <span class="username">{{ current_user.username }}</span>
         <form method="post" action="/logout" class="inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

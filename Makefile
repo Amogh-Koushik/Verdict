@@ -4,7 +4,7 @@ runners:
 	docker build -t verdict-runner-cpp:1 runners/cpp
 	docker build -t verdict-runner-python:1 runners/python
 
-up:
+up: runners
 	docker compose up --build -d --wait
 
 down:

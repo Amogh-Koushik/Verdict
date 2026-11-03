@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "submissions/_status.html" import status %}
+{% block title %}My submissions · Verdict{% endblock %}
+{% block content %}
+  <h1>My submissions</h1>
+  {% if rows %}
+    <table class="listing">
+      <thead>
+        <tr><th>#</th><th>Problem</th><th>Language</th><th>Result</th><th>Time</th><th>Memory</th><th>Submitted</th></tr>
+      </thead>
+      <tbody>
+        {% for submission, problem in rows %}
+          <tr>
+            <td><a href="/submissions/{{ submission.id }}">{{ submission.id }}</a></td>
+            <td><a href="/problems/{{ problem.slug }}">{{ problem.title }}</a></td>
+            <td>{{ submission.language.value }}</td>
+            <td>{{ status(submission) }}</td>
+            <td>{% if submission.time_ms is not none %}{{ submission.time_ms }} ms{% endif %}</td>
+            <td>{% if submission.memory_kb is not none %}{{ submission.memory_kb }} KB{% endif %}</td>
+            <td>{{ submission.created_at | ist }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>You haven't submitted anything yet. Pick one of the <a href="/problems">problems</a>.</p>
+  {% endif %}
+{% endblock %}

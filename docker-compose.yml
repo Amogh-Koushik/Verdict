@@ -65,6 +65,9 @@ services:
   worker:
     <<: *app
     command: ["python", "-m", "verdict.judge"]
+    # On SIGTERM the worker has 10 s to finish, then gives its submission back; Docker's
+    # default 10 s before SIGKILL would cut that hand-back off.
+    stop_grace_period: 20s
     # The socket's group differs by host: 0 on Docker Desktop, the docker group's id on Linux.
     group_add:
       - "${DOCKER_GID:-0}"

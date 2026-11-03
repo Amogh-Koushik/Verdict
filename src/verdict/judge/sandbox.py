@@ -126,6 +126,19 @@ def open_sandbox(
         container.remove(force=True, v=True)
 
 
+def kill_sandbox(client: DockerClient, submission: str, worker_id: str) -> None:
+    """Kill this worker's sandbox for `submission`, so a judge waiting on it returns at once."""
+    sandboxes = client.containers.list(
+        filters={"label": [f"{SUBMISSION_LABEL}={submission}", f"{WORKER_LABEL}={worker_id}"]}
+    )
+    for container in sandboxes:
+        try:
+            container.kill()
+        except APIError:
+            # It may have finished and been removed between the listing and the kill.
+            logger.info("sandbox already gone", extra={"container": container.short_id})
+
+
 def remove_leftover_sandboxes(client: DockerClient, worker_id: str) -> int:
     """Remove this worker's sandbox containers left behind by a crash; return how many."""
     leftovers = client.containers.list(

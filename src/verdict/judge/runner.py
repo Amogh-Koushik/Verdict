@@ -1,4 +1,5 @@
 import logging
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -46,12 +47,23 @@ class JudgeResult:
     compile_output: str | None = None
 
 
-def judge(client: DockerClient, job: JudgeJob, worker_id: str) -> JudgeResult:
-    """Judge one submission in a fresh sandbox; any unexpected failure becomes a system error."""
+def judge(
+    client: DockerClient,
+    job: JudgeJob,
+    worker_id: str,
+    abandoned: threading.Event | None = None,
+) -> JudgeResult:
+    """Judge one submission in a fresh sandbox; any unexpected failure becomes a system error.
+
+    The caller sets `abandoned` before killing the sandbox because it no longer wants the result.
+    """
     try:
         return _judge(client, job, worker_id)
     except Exception:
-        logger.exception("judging failed", extra={"submission": job.submission})
+        if abandoned is not None and abandoned.is_set():
+            logger.info("judging stopped early", extra={"submission": job.submission})
+        else:
+            logger.exception("judging failed", extra={"submission": job.submission})
         return JudgeResult(Verdict.SYSTEM_ERROR)
 
 

@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -11,10 +12,16 @@ from verdict.web.deps import Viewer
 from verdict.web.sessions import set_session_cookie
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
+# India has no daylight saving time, so a fixed offset is exact and needs no time-zone database.
+IST = timezone(timedelta(hours=5, minutes=30), "IST")
 
 
 def format_seconds(milliseconds: int) -> str:
     return f"{milliseconds / 1000:g} s"
+
+
+def format_ist(moment: datetime) -> str:
+    return moment.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S IST")
 
 
 # Starlette's default only escapes files ending in .html; this escapes every template.
@@ -22,6 +29,7 @@ templates = Jinja2Templates(
     env=Environment(loader=FileSystemLoader(TEMPLATES_DIR), autoescape=True)
 )
 templates.env.filters["seconds"] = format_seconds
+templates.env.filters["ist"] = format_ist
 
 
 def render(
