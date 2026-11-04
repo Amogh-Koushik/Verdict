@@ -113,6 +113,18 @@ passing all 10 tests took 3.4 seconds on average, and one failing the first test
 limit exceeded costs the full wall-clock limit (twice the time limit plus a second), so a Python one
 took 6.0 seconds.
 
+To measure a production stack, whose database has no published port, run the script on the server
+itself: Linux can reach a container's address directly. It needs `uv` and the seeded sample problems,
+replaces the workers while it runs, and leaves one worker and its submissions behind, so don't run it
+during a contest.
+
+```bash
+set -a; . ./.env; set +a
+export COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+export DATABASE_URL="postgresql+psycopg://verdict:${POSTGRES_PASSWORD}@$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$(docker compose ps -q db)"):5432/verdict"
+uv run python scripts/load_test.py
+```
+
 ## Deploying
 
 `docker-compose.prod.yml` adds Caddy, which gets and renews an HTTPS certificate on its own, and
@@ -141,7 +153,7 @@ subnet, the range and both addresses together in `docker-compose.prod.yml`.
 Every image the stack uses is published for x86-64 and ARM64, and the app and runner images build
 and run on ARM64. The time limits and the load-test numbers above were measured on x86-64, so on
 a new server, judge the reference solutions with `try-run` (each should take well under half its
-time limit) and run `make load-test` to see its own numbers.
+time limit) and measure it with the load test, as described below.
 
 ## Security notes
 

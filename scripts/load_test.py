@@ -1,10 +1,12 @@
 import argparse
+import secrets
 import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
 from sqlalchemy import Engine, select, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from verdict.core.accounts import create_user, find_user
@@ -89,14 +91,18 @@ def main() -> None:
     results: list[RoundResult] = []
     try:
         problem_id, user_id = prepare(engine)
-        for workers in args.workers:
-            start_workers(workers)
-            result = run_round(engine, problem_id, user_id, programs, workers, args.submissions)
-            print(f"{workers} worker(s): {result.submissions} judged in {result.seconds:.1f} s")
-            results.append(result)
+        # Only from here on, so a failure above leaves the running workers untouched.
+        try:
+            for workers in args.workers:
+                start_workers(workers)
+                result = run_round(engine, problem_id, user_id, programs, workers, args.submissions)
+                print(f"{workers} worker(s): {result.submissions} judged in {result.seconds:.1f} s")
+                results.append(result)
+        finally:
+            start_workers(1)
+    except OperationalError:
+        raise SystemExit("Can't reach Postgres; check DATABASE_URL (see the README).") from None
     finally:
-        # Back to the single worker that `make up` starts.
-        start_workers(1)
         engine.dispose()
     print()
     print(format_table(results))
@@ -115,8 +121,8 @@ def prepare(engine: Engine) -> tuple[int, int]:
             raise SystemExit(f"The problem {PROBLEM_SLUG} isn't there; run `make seed` first.")
         user = find_user(db, LOAD_TEST_USER)
         if user is None:
-            # Nobody logs in as this user, so its password only has to be long enough.
-            user = create_user(db, LOAD_TEST_USER, "load-test submissions only")
+            # Nobody logs in as this user, and this may be a public server.
+            user = create_user(db, LOAD_TEST_USER, secrets.token_urlsafe(32))
         return problem.id, user.id
 
 
