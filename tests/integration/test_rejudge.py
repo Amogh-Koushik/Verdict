@@ -19,7 +19,7 @@ from verdict.core.accounts import create_user
 from verdict.core.config import Settings
 from verdict.core.events import QUEUE_CHANNEL, contest_channel, scoreboard_key
 from verdict.core.models import Problem, Submission
-from verdict.core.verdicts import Language, SubmissionStatus, Verdict
+from verdict.core.verdicts import Language, QueuePriority, SubmissionStatus, Verdict
 from verdict.judge.queue import claim_submission, extend_lease, finish_submission
 from verdict.judge.runner import JudgeResult
 from verdict.judge.worker import claim_next_submission
@@ -72,6 +72,7 @@ def test_rejudge_queues_every_submission_of_the_problem_and_clears_its_result(
         submission = db.get_one(Submission, submission_id)
         assert submission.status is SubmissionStatus.QUEUED
         assert submission.attempt == 0
+        assert submission.priority == QueuePriority.REJUDGE
         assert (submission.verdict, submission.failed_test, submission.time_ms) == (
             None,
             None,
@@ -88,6 +89,19 @@ def test_rejudge_queues_every_submission_of_the_problem_and_clears_its_result(
     assert (untouched.status, untouched.verdict) == (SubmissionStatus.DONE, Verdict.WRONG_ANSWER)
     page = admin.get(response.headers["location"]).text
     assert "3 submissions went back in the queue, to be judged against version 1." in page
+
+
+def test_a_new_submission_is_judged_before_older_rejudged_ones(db: Session, engine: Engine) -> None:
+    rejudged = add_submissions(db, 3)
+    judge_all(engine, "worker-a", WRONG)
+    requeue_problem(db, problem_of(db, rejudged[0]).id)
+    [new] = add_submissions(db, 1)
+
+    order = []
+    while (claimed := claim_submission(engine, "worker-a", lease_seconds=60)) is not None:
+        order.append(claimed.lease.submission_id)
+
+    assert order == [new, *rejudged]
 
 
 def test_rejudge_wakes_the_workers(db: Session, engine: Engine) -> None:

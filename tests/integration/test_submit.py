@@ -15,7 +15,7 @@ from tests.integration.forms import csrf_token_from, log_in, log_in_as_admin, re
 from verdict.core.config import Settings
 from verdict.core.events import QUEUE_CHANNEL
 from verdict.core.models import MAX_SOURCE_BYTES, Problem, Submission, User
-from verdict.core.verdicts import Language, SubmissionStatus
+from verdict.core.verdicts import Language, QueuePriority, SubmissionStatus
 from verdict.web.main import create_app
 
 PASSWORD = "a long enough password"
@@ -222,6 +222,25 @@ def test_a_full_queue_refuses_with_503_and_retry_after(
     assert "busy" in refused.text
     assert submission_count(db) == 2
     assert redis.keys("ratelimit:submit:*") == [], "a refused submission must not use up the limit"
+
+
+def test_rejudged_submissions_waiting_do_not_count_toward_the_queue_limit(
+    busy_client: TestClient, db: Session, problem: Problem
+) -> None:
+    bob = db.scalars(select(User.id).where(User.username == "bob")).one()
+    db.add_all(
+        Submission(
+            user_id=bob,
+            problem_id=problem.id,
+            language=Language.PYTHON,
+            source="1",
+            priority=QueuePriority.REJUDGE,
+        )
+        for _ in range(5)
+    )
+    db.commit()
+    assert submit(busy_client).status_code == 303
+    assert submission_count(db) == 6
 
 
 def test_only_the_author_and_admins_can_open_a_submission(

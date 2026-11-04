@@ -1,12 +1,14 @@
 import re
 
 from fastapi.testclient import TestClient
-from sqlalchemy import text
+from sqlalchemy import text, update
 from sqlalchemy.orm import Session
 
 from tests.integration.forms import log_in_as_admin
 from tests.integration.submissions import add_submissions
 from verdict.core.config import Settings
+from verdict.core.models import Submission
+from verdict.core.verdicts import QueuePriority
 from verdict.web.admin_stats import judge_stats
 
 # Times are set from the database's clock, which can drift from this machine's.
@@ -32,7 +34,7 @@ SET_JUDGING = text(
 # The check written out by hand, the way an admin would run it in psql.
 RAW_ROWS = text(
     """
-    SELECT status, verdict,
+    SELECT status, verdict, priority,
            judged_at >= now() - interval '1 hour' AS in_last_hour,
            extract(epoch FROM judged_at - started_at) * 1000 AS judge_ms,
            lease_expires_at - interval '60 seconds' >= now() - interval '1 minute' AS lease_fresh,
@@ -68,8 +70,12 @@ def seed_activity(db: Session) -> None:
         )
     db.execute(SET_JUDGING, {"submission_id": next(ids), "worker": "worker-a"})
     db.commit()
-    # Two more submissions are still waiting.
-    add_submissions(db, 2)
+    # Two more submissions are still waiting, one of them requeued by a rejudge.
+    rejudged, _ = add_submissions(db, 2)
+    db.execute(
+        update(Submission).where(Submission.id == rejudged).values(priority=QueuePriority.REJUDGE)
+    )
+    db.commit()
 
 
 def linear_percentile(values: list[float], fraction: float) -> float:
@@ -90,7 +96,7 @@ def shown(page: str, stat: str) -> str:
 def test_the_numbers_match_the_ones_worked_out_by_hand(db: Session, settings: Settings) -> None:
     seed_activity(db)
     stats = judge_stats(db, settings.lease_seconds)
-    assert (stats.queued, stats.judging) == (2, 1)
+    assert (stats.queued, stats.queued_rejudges, stats.judging) == (2, 1, 1)
     assert {verdict.value: count for verdict, count in stats.recent_verdicts if count} == {
         "AC": 3,
         "WA": 1,
@@ -120,6 +126,9 @@ def test_the_numbers_match_a_manual_sql_check(db: Session, settings: Settings) -
 
     assert stats.queued == sum(row.status == "queued" for row in rows)
     assert stats.judging == sum(row.status == "judging" for row in rows)
+    assert stats.queued_rejudges == sum(
+        row.status == "queued" and row.priority == QueuePriority.REJUDGE for row in rows
+    )
     assert {verdict.value: count for verdict, count in stats.recent_verdicts if count} == (
         expected_verdicts
     )
@@ -135,7 +144,8 @@ def test_the_stats_page_shows_them(client: TestClient, db: Session) -> None:
     seed_activity(db)
     log_in_as_admin(client, db)
     page = client.get("/admin/stats").text
-    assert (shown(page, "queued"), shown(page, "judging")) == ("2", "1")
+    waiting = (shown(page, "queued"), shown(page, "queued-rejudges"), shown(page, "judging"))
+    assert waiting == ("2", "1", "1")
     assert [shown(page, f"verdict-{verdict}") for verdict in ("AC", "WA", "TLE", "MLE", "SE")] == [
         "3",
         "1",

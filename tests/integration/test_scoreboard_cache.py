@@ -55,6 +55,16 @@ def test_the_scoreboard_is_cached_until_a_verdict_for_the_contest_lands(
     assert (row.username, row.solved, row.penalty) == ("alice", 1, 7)
 
 
+def test_administrators_are_left_off_the_scoreboard(
+    db: Session, redis: Redis, contest: Contest, problem: Problem, alice: User
+) -> None:
+    organiser = create_user(db, "organiser", "a long enough password", is_admin=True)
+    add_contest_submission(db, contest, organiser, problem, minute=1, verdict=Verdict.ACCEPTED)
+    add_contest_submission(db, contest, alice, problem, minute=9, verdict=Verdict.WRONG_ANSWER)
+    [row] = contest_scoreboard(db, redis, contest).rows
+    assert (row.rank, row.username, row.cells[0].mark) == (1, "alice", "-1")
+
+
 def test_a_cached_scoreboard_is_the_same_as_a_freshly_computed_one(
     db: Session, redis: Redis, contest: Contest, problem: Problem, alice: User
 ) -> None:

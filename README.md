@@ -9,6 +9,7 @@ containers, and results and a live ICPC-style scoreboard update in the browser i
 - Contests with a countdown, problems hidden until the start, and a live ICPC scoreboard.
 - Verdicts AC, WA, TLE, MLE, RE, CE and SE, shown on the page the moment they are decided.
 - Admin tools: problem and contest editing, test uploads, rejudging a problem, and a stats page.
+  Administrators can submit to a contest to try it, but aren't ranked on its scoreboard.
 - Five sample problems with tests and reference solutions, and a sample contest, added by one
   command.
 
@@ -32,7 +33,9 @@ containers, and results and a live ICPC-style scoreboard update in the browser i
 
 Postgres is both the source of truth and the job queue: workers claim submissions with
 `FOR UPDATE SKIP LOCKED` and a lease, and every write after a claim is fenced on the lease, so a
-stalled worker can never overwrite a newer result. Redis carries "something changed" events from
+stalled worker can never overwrite a newer result. New submissions are judged before rejudged
+ones, oldest first within each, so rejudging a problem during a contest never makes contestants
+wait. Redis carries "something changed" events from
 the workers to every web process, which relays them to browsers over Server-Sent Events.
 [docs/design.md](docs/design.md) describes the data model and the request and judge flows.
 
@@ -118,7 +121,7 @@ keeps Postgres, Redis and the web app off the host's ports.
 1. Point a DNS name at the server and open ports 80 and 443.
 2. Copy `.env.example` to `.env` and set `VERDICT_DOMAIN` to that name, `POSTGRES_PASSWORD` to a
    long random value (for example `openssl rand -hex 24`), and `DOCKER_GID` as above. Compose
-   refuses to start the production stack until `POSTGRES_PASSWORD` is set.
+   refuses to start the production stack until `POSTGRES_PASSWORD` and `VERDICT_DOMAIN` are set.
 3. Build the runner images and start everything:
 
    ```bash
@@ -127,9 +130,18 @@ keeps Postgres, Redis and the web app off the host's ports.
    docker compose -f docker-compose.yml -f docker-compose.prod.yml exec web python -m verdict.cli create-admin admin
    ```
 
-In production the session cookie is `Secure`, Caddy passes live-update streams through without
-buffering, limits request bodies (60 MB for test archives, 1 MB for everything else), and forwards
-the client's address, which the login rate limit uses.
+In production the session cookie is `Secure`, and every service restarts with Docker except the
+one-off migration job. Caddy passes live-update streams through without buffering, limits request
+bodies (60 MB for test archives, 1 MB for everything else), and forwards the client's address,
+which the login rate limit uses. Caddy and the web app share a network of their own,
+`10.89.250.0/28`, where Caddy has the fixed address `10.89.250.2`, and the web app believes
+forwarded addresses from that address only. If the server already uses that range, change the
+subnet, the range and both addresses together in `docker-compose.prod.yml`.
+
+Every image the stack uses is published for x86-64 and ARM64, and the app and runner images build
+and run on ARM64. The time limits and the load-test numbers above were measured on x86-64, so on
+a new server, judge the reference solutions with `try-run` (each should take well under half its
+time limit) and run `make load-test` to see its own numbers.
 
 ## Security notes
 

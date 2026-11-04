@@ -1,12 +1,12 @@
 import threading
 import time
 
-from sqlalchemy import Engine
+from sqlalchemy import Engine, update
 from sqlalchemy.orm import Session
 
 from tests.integration.submissions import add_submissions
 from verdict.core.models import Submission
-from verdict.core.verdicts import SubmissionStatus, Verdict
+from verdict.core.verdicts import QueuePriority, SubmissionStatus, Verdict
 from verdict.judge.queue import (
     claim_submission,
     extend_lease,
@@ -41,17 +41,43 @@ def test_claim_returns_none_when_nothing_is_waiting(engine: Engine) -> None:
     assert claim_submission(engine, "worker-a", lease_seconds=60) is None
 
 
+def mark_rejudged(db: Session, submission_ids: list[int]) -> None:
+    db.execute(
+        update(Submission)
+        .where(Submission.id.in_(submission_ids))
+        .values(priority=QueuePriority.REJUDGE)
+    )
+    db.commit()
+
+
+def test_new_submissions_are_claimed_before_rejudged_ones_oldest_first_within_each(
+    engine: Engine, db: Session
+) -> None:
+    oldest, older, newer, newest = add_submissions(db, 4)
+    mark_rejudged(db, [oldest, newer])
+    order = []
+    while (claimed := claim_submission(engine, "worker-a", lease_seconds=60)) is not None:
+        order.append(claimed.lease.submission_id)
+    assert order == [older, newest, oldest, newer]
+
+
 def test_200_submissions_claimed_by_8_concurrent_claimers_are_each_claimed_once(
     engine: Engine, db: Session
 ) -> None:
     submission_ids = add_submissions(db, 200)
+    rejudged = set(submission_ids[::2])
+    mark_rejudged(db, sorted(rejudged))
     claims: list[list[int]] = [[] for _ in range(8)]
+    in_claim_order: list[int] = []
+    order_lock = threading.Lock()
     start = threading.Barrier(8)
 
     def claim_until_empty(worker: int) -> None:
         start.wait()
         while (claimed := claim_submission(engine, f"worker-{worker}", 60)) is not None:
             claims[worker].append(claimed.lease.submission_id)
+            with order_lock:
+                in_claim_order.append(claimed.lease.submission_id)
 
     threads = [threading.Thread(target=claim_until_empty, args=(n,)) for n in range(8)]
     for thread in threads:
@@ -61,6 +87,10 @@ def test_200_submissions_claimed_by_8_concurrent_claimers_are_each_claimed_once(
     claimed_ids = [submission_id for worker_claims in claims for submission_id in worker_claims]
     assert sorted(claimed_ids) == submission_ids
     assert sum(1 for worker_claims in claims if worker_claims) > 1, "claims were not concurrent"
+    # A claimer skips rows the others have locked, so as the new submissions run out, up to 7
+    # of them can still be completing their claims while a rejudged one is taken.
+    first_rejudge = next(i for i, sid in enumerate(in_claim_order) if sid in rejudged)
+    assert first_rejudge >= 100 - 7
 
 
 def test_an_expired_lease_is_reclaimed_by_another_worker(engine: Engine, db: Session) -> None:

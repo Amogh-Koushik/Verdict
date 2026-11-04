@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 
 
 class Language(StrEnum):
@@ -21,3 +21,10 @@ class Verdict(StrEnum):
     RUNTIME_ERROR = "RE"
     COMPILATION_ERROR = "CE"
     SYSTEM_ERROR = "SE"
+
+
+class QueuePriority(IntEnum):
+    """Higher is judged first; within one priority, the oldest submission goes first."""
+
+    REJUDGE = 0
+    NEW = 1

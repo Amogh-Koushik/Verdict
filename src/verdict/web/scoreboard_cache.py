@@ -75,7 +75,8 @@ def compute_scoreboard(db: Session, contest: Contest) -> Scoreboard:
                 ContestProblem.problem_id == Submission.problem_id,
             ),
         )
-        .where(Submission.contest_id == contest.id)
+        # Administrators can submit to test a contest's problems, but they don't compete.
+        .where(Submission.contest_id == contest.id, User.is_admin.is_(False))
         .order_by(Submission.created_at, Submission.id)
     ).all()
     submissions = [

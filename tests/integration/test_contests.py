@@ -97,6 +97,21 @@ def test_a_submission_from_the_contest_page_during_the_contest_counts_for_it(
     assert 'title="Still being judged">?</td>' in table
 
 
+def test_an_admin_can_submit_during_the_contest_without_being_ranked(
+    client: TestClient, db: Session
+) -> None:
+    contest = add_contest(db, starts_in=STARTED)
+    add_contest_problem(db, contest, "A", "secret-sum")
+    log_in_as_admin(client, db)
+
+    assert submit_to_contest(client).status_code == 303
+
+    assert contest_of_only_submission(db) == contest.id
+    table = client.get("/contests/weekly/scoreboard/table").text
+    assert "<td>admin</td>" not in table
+    assert "No contestant has submitted yet." in table
+
+
 def test_a_new_contest_submission_refreshes_live_scoreboards(
     client: TestClient, db: Session, redis: Redis
 ) -> None:

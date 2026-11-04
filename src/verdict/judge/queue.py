@@ -6,6 +6,9 @@ from sqlalchemy import Engine, TextClause, text
 from verdict.core.verdicts import Language
 from verdict.judge.runner import JudgeResult
 
+# New submissions before rejudged ones (QueuePriority), and the oldest first within each, so a
+# large rejudge fills idle time instead of making contestants wait. ix_submissions_pending
+# holds pending rows in exactly this order.
 CLAIM = text(
     """
     UPDATE submissions
@@ -21,7 +24,7 @@ CLAIM = text(
         SELECT id FROM submissions
         WHERE status = 'queued'
            OR (status = 'judging' AND lease_expires_at < now())
-        ORDER BY id
+        ORDER BY priority DESC, id
         FOR UPDATE SKIP LOCKED
         LIMIT 1
     )

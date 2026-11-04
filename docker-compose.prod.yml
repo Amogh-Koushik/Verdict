@@ -15,6 +15,8 @@ services:
     ports: !reset []
 
   migrate:
+    # A one-shot job: any other policy would run the migrations again every time they finish.
+    restart: "no"
     environment:
       DATABASE_URL: *database-url
 
@@ -22,12 +24,15 @@ services:
     restart: unless-stopped
     # Reached only through Caddy.
     ports: !reset []
+    networks:
+      - default
+      - edge
     environment:
       DATABASE_URL: *database-url
       SESSION_COOKIE_SECURE: "true"
-      # Nothing but Caddy can connect to web, so the client address it forwards can be trusted;
-      # the login rate limit counts by that address.
-      FORWARDED_ALLOW_IPS: "*"
+      # Uvicorn believes X-Forwarded-For (the client's address, which the login rate limit
+      # counts by) and X-Forwarded-Proto only from this address: Caddy's, on the edge network.
+      FORWARDED_ALLOW_IPS: 10.89.250.2
 
   worker:
     restart: unless-stopped
@@ -43,8 +48,11 @@ services:
       - "80:80"
       - "443:443"
       - "443:443/udp"
+    networks:
+      edge:
+        ipv4_address: 10.89.250.2
     environment:
-      VERDICT_DOMAIN: ${VERDICT_DOMAIN:-localhost}
+      VERDICT_DOMAIN: ${VERDICT_DOMAIN:?set VERDICT_DOMAIN in .env}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -52,6 +60,16 @@ services:
     depends_on:
       web:
         condition: service_healthy
+
+networks:
+  # Caddy and web only. Caddy's address is fixed, outside the range Docker hands out, so web
+  # can't take it first. If 10.89.250.0/28 clashes with a network on the server, change the
+  # subnet, the range and both addresses above together.
+  edge:
+    ipam:
+      config:
+        - subnet: 10.89.250.0/28
+          ip_range: 10.89.250.8/29
 
 volumes:
   caddy_data:

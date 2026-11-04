@@ -7,6 +7,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Index,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -17,7 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from verdict.core.db import Base
-from verdict.core.verdicts import Language, SubmissionStatus, Verdict
+from verdict.core.verdicts import Language, QueuePriority, SubmissionStatus, Verdict
 
 MAX_SOURCE_BYTES = 64 * 1024
 MAX_COMPILE_OUTPUT_BYTES = 4 * 1024
@@ -138,12 +139,7 @@ class Submission(Base):
             name="compile_output_size",
         ),
         CheckConstraint("attempt >= 0", name="attempt_not_negative"),
-        Index(
-            "ix_submissions_pending",
-            "status",
-            "id",
-            postgresql_where=text("status IN ('queued', 'judging')"),
-        ),
+        CheckConstraint("priority IN (0, 1)", name="priority_known"),
         Index("ix_submissions_contest_user_created", "contest_id", "user_id", "created_at"),
     )
 
@@ -165,6 +161,9 @@ class Submission(Base):
     compile_output: Mapped[str | None] = mapped_column(Text)
     tests_version: Mapped[int | None]
     attempt: Mapped[int] = mapped_column(default=0, server_default=text("0"))
+    priority: Mapped[int] = mapped_column(
+        SmallInteger, default=QueuePriority.NEW, server_default=text(str(QueuePriority.NEW.value))
+    )
     lease_owner: Mapped[str | None] = mapped_column(String(128))
     lease_expires_at: Mapped[datetime | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
@@ -177,4 +176,11 @@ class Submission(Base):
         return self.status in (SubmissionStatus.QUEUED, SubmissionStatus.JUDGING)
 
 
+# In the claim's order, so the next submission to judge is the first entry of a small index.
+Index(
+    "ix_submissions_pending",
+    Submission.priority.desc(),
+    Submission.id,
+    postgresql_where=text("status IN ('queued', 'judging')"),
+)
 Index("ix_submissions_user_recent", Submission.user_id, Submission.created_at.desc())

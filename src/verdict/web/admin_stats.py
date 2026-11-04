@@ -7,7 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from verdict.core.db import database_now
-from verdict.core.verdicts import Verdict
+from verdict.core.verdicts import QueuePriority, Verdict
 from verdict.web.deps import DbDep, SettingsDep, ViewerDep, require_admin
 from verdict.web.templating import render
 
@@ -17,6 +17,7 @@ router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
 QUEUE_DEPTH = text(
     """
     SELECT count(*) FILTER (WHERE status = 'queued') AS queued,
+           count(*) FILTER (WHERE status = 'queued' AND priority = :rejudge) AS queued_rejudges,
            count(*) FILTER (WHERE status = 'judging') AS judging
     FROM submissions
     WHERE status IN ('queued', 'judging')
@@ -61,6 +62,8 @@ ACTIVE_WORKERS = text(
 class JudgeStats:
     measured_at: datetime
     queued: int
+    # Of the waiting ones, those requeued by a rejudge, which wait behind new submissions.
+    queued_rejudges: int
     judging: int
     # Every verdict in a fixed order, with 0 for those not seen in the last hour.
     recent_verdicts: list[tuple[Verdict, int]]
@@ -79,13 +82,14 @@ def stats_page(
 
 
 def judge_stats(db: Session, lease_seconds: int) -> JudgeStats:
-    queue = db.execute(QUEUE_DEPTH).one()
+    queue = db.execute(QUEUE_DEPTH, {"rejudge": QueuePriority.REJUDGE}).one()
     verdict_counts = {Verdict(row.verdict): row.submissions for row in db.execute(RECENT_VERDICTS)}
     times = db.execute(RECENT_JUDGE_TIMES).one()
     workers = db.scalars(ACTIVE_WORKERS, {"lease_seconds": lease_seconds}).all()
     return JudgeStats(
         measured_at=database_now(db),
         queued=queue.queued,
+        queued_rejudges=queue.queued_rejudges,
         judging=queue.judging,
         recent_verdicts=[(verdict, verdict_counts.get(verdict, 0)) for verdict in Verdict],
         judged=times.judged,

@@ -4,7 +4,7 @@
 }
 
 # Caddy obtains and renews the HTTPS certificate for this name by itself.
-{$VERDICT_DOMAIN:localhost} {
+{$VERDICT_DOMAIN} {
 	# Test archives may hold up to 50 MB; every other request is a small form or a source file.
 	@test_upload path_regexp ^/admin/problems/[0-9]+/tests$
 	@other_requests not path_regexp ^/admin/problems/[0-9]+/tests$

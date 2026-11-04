@@ -10,9 +10,12 @@
   <dl class="limits">
     <dt>Waiting</dt>
     <dd data-stat="queued">{{ stats.queued }}</dd>
+    <dt>Of those, rejudges</dt>
+    <dd data-stat="queued-rejudges">{{ stats.queued_rejudges }}</dd>
     <dt>Being judged</dt>
     <dd data-stat="judging">{{ stats.judging }}</dd>
   </dl>
+  <p class="note">Rejudged submissions wait until no new submission is waiting.</p>
 
   <h2>Verdicts in the last hour</h2>
   <table class="listing">

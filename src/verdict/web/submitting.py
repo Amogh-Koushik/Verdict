@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from verdict.core.config import Settings
 from verdict.core.events import QUEUE_CHANNEL
 from verdict.core.models import MAX_SOURCE_BYTES, Problem, Submission, User
-from verdict.core.verdicts import Language, SubmissionStatus
+from verdict.core.verdicts import Language, QueuePriority, SubmissionStatus
 from verdict.web.deps import Viewer
 from verdict.web.rate_limit import RateLimitExceededError, hit_fixed_window
 from verdict.web.templating import render
@@ -166,10 +166,15 @@ def _check_can_queue(
 ) -> None:
     if problem.tests_version == 0:
         raise SubmissionRefusedError("This problem has no tests yet, so it can't be judged.", 400)
+    # Rejudged submissions wait behind new ones, so they don't count toward the limit: a large
+    # rejudge must not lock contestants out.
     queued = db.scalar(
         select(func.count())
         .select_from(Submission)
-        .where(Submission.status == SubmissionStatus.QUEUED)
+        .where(
+            Submission.status == SubmissionStatus.QUEUED,
+            Submission.priority == QueuePriority.NEW,
+        )
     )
     # Checked before the rate limits, so a refusal here doesn't use up the user's allowance.
     if (queued or 0) >= settings.queue_limit:
