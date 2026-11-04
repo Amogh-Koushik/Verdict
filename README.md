@@ -113,6 +113,21 @@ passing all 10 tests took 3.4 seconds on average, and one failing the first test
 limit exceeded costs the full wall-clock limit (twice the time limit plus a second), so a Python one
 took 6.0 seconds.
 
+On a small cloud server running the production stack, an Azure Standard_B2als_v2 (2 vCPUs, 4 GiB of
+memory, Ubuntu 24.04):
+
+| Workers | Submissions | Wall time | Throughput | Median submit to verdict | p95 submit to verdict | Wrong verdicts |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 100 | 205.1 s | 29.3 per minute | 104.4 s | 191.4 s | 0 |
+| 2 | 100 | 139.5 s | 43.0 per minute | 72.4 s | 131.7 s | 0 |
+| 4 | 100 | 117.9 s | 50.9 per minute | 62.9 s | 111.7 s | 0 |
+
+One worker is faster here than on the machine above, most likely because Docker runs directly on
+Linux, with no virtual machine in between. With only two vCPUs to share, more workers help less: 1.5
+times with two and 1.7 times with four, still with no wrong verdicts. Two workers suit a server this
+size. Treat these as best-case figures: a problem with more than this one's 10 tests takes longer per
+submission, and this server type is burstable, so it can slow down under long sustained load.
+
 To measure a production stack, whose database has no published port, run the script on the server
 itself: Linux can reach a container's address directly. It needs `uv` and the seeded sample problems,
 replaces the workers while it runs, and leaves one worker and its submissions behind, so don't run it
