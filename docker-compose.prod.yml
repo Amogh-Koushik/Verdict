@@ -1,0 +1,58 @@
+# Production: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Set POSTGRES_PASSWORD and VERDICT_DOMAIN in .env first (see .env.example).
+x-database-url: &database-url postgresql+psycopg://verdict:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/verdict
+
+services:
+  db:
+    restart: unless-stopped
+    # Only the other services reach Postgres and Redis, over the Compose network.
+    ports: !reset []
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+
+  redis:
+    restart: unless-stopped
+    ports: !reset []
+
+  migrate:
+    environment:
+      DATABASE_URL: *database-url
+
+  web:
+    restart: unless-stopped
+    # Reached only through Caddy.
+    ports: !reset []
+    environment:
+      DATABASE_URL: *database-url
+      SESSION_COOKIE_SECURE: "true"
+      # Nothing but Caddy can connect to web, so the client address it forwards can be trusted;
+      # the login rate limit counts by that address.
+      FORWARDED_ALLOW_IPS: "*"
+
+  worker:
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: *database-url
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    # Caddy's own grace period for open streams is 5 s (see Caddyfile).
+    stop_grace_period: 15s
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      VERDICT_DOMAIN: ${VERDICT_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  caddy_data:
+  caddy_config:

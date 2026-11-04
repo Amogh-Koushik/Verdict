@@ -28,8 +28,8 @@ CLAIM = text(
     RETURNING id, attempt, problem_id, contest_id, language, source, tests_version
     """
 )
-# Every write after the claim matches id, attempt and owner, so a worker whose lease was taken
-# over (or given back) can never overwrite the row.
+# Every write after the claim matches id, attempt, owner and status 'judging', so a worker whose
+# lease was taken over, given back or reset by a rejudge can never overwrite the row.
 EXTEND_LEASE = text(
     """
     UPDATE submissions

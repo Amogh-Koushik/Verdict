@@ -77,7 +77,9 @@ CLEAN = RunStats(
         ),
     ],
 )
-def test_classify(changes: dict[str, object], expected: Verdict | None) -> None:
+def test_a_run_gets_the_verdict_its_measurements_call_for(
+    changes: dict[str, object], expected: Verdict | None
+) -> None:
     assert classify(replace(CLEAN, **changes), LIMITS) == expected
 
 

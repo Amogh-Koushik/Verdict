@@ -119,7 +119,9 @@ def test_closing_the_stream_releases_its_redis_subscription(
         browser_for(redis, app_settings, server, author_of(db, submission_id)) as browser,
         browser.stream("GET", f"/live/submissions/{submission_id}") as response,
     ):
-        next(stream_lines(response))
+        # Kept in a variable: a discarded line iterator is closed, and closing it ends the stream.
+        lines = stream_lines(response)
+        next(lines)
         assert redis.pubsub_numsub(channel) == [(channel, 1)]
     wait_for_subscribers(redis, channel, 0)
     assert redis.pubsub_numsub(channel) == [(channel, 0)]

@@ -1,4 +1,4 @@
-.PHONY: runners up down lint test test-sandbox seed
+.PHONY: runners up down lint test test-sandbox seed load-test
 
 runners:
 	docker build -t verdict-runner-cpp:1 runners/cpp
@@ -24,3 +24,7 @@ test-sandbox:
 # The web container can write the problems volume; the worker only reads it.
 seed:
 	docker compose exec web python -m verdict.cli seed
+
+# Needs the stack running and the sample problems seeded; scales the workers to 1, 2 and 4.
+load-test:
+	uv run python scripts/load_test.py

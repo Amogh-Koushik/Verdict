@@ -39,9 +39,5 @@ def ping_database(engine: Engine) -> None:
 
 
 def database_now(db: Session) -> datetime:
-    """The database's clock, which also stamps every row's created_at.
-
-    Postgres keeps now() fixed for a whole transaction, so a row inserted later in the same
-    transaction gets exactly this time.
-    """
+    """The database's clock; fixed for the transaction, so rows it inserts get this created_at."""
     return db.scalars(select(func.now())).one()

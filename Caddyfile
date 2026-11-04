@@ -1,0 +1,27 @@
+{
+	# Live-update streams never end by themselves, so a shutdown closes them after 5 s.
+	grace_period 5s
+}
+
+# Caddy obtains and renews the HTTPS certificate for this name by itself.
+{$VERDICT_DOMAIN:localhost} {
+	# Test archives may hold up to 50 MB; every other request is a small form or a source file.
+	@test_upload path_regexp ^/admin/problems/[0-9]+/tests$
+	@other_requests not path_regexp ^/admin/problems/[0-9]+/tests$
+	request_body @test_upload {
+		max_size 60MB
+	}
+	request_body @other_requests {
+		max_size 1MB
+	}
+
+	handle /live/* {
+		reverse_proxy web:8000 {
+			# Server-sent events must reach the browser the moment they are written.
+			flush_interval -1
+		}
+	}
+	handle {
+		reverse_proxy web:8000
+	}
+}

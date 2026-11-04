@@ -103,7 +103,7 @@ def test_file_of_exactly_the_size_limit_is_accepted(tmp_path: Path) -> None:
         ),
     ],
 )
-def test_archive_is_rejected(
+def test_an_archive_breaking_a_rule_is_rejected_and_nothing_is_extracted(
     tmp_path: Path, entries: list[tuple[str, bytes]], message: str
 ) -> None:
     with pytest.raises(TestArchiveError, match=message):
