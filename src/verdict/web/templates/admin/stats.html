@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "submissions/_status.html" import verdict_names %}
+{% block title %}Stats · Admin · Verdict{% endblock %}
+{% block content %}
+  {% include "admin/_nav.html" %}
+  <h1>Judge stats</h1>
+  <p class="note">As of {{ stats.measured_at | ist }}. Reload the page to update.</p>
+
+  <h2>Queue</h2>
+  <dl class="limits">
+    <dt>Waiting</dt>
+    <dd data-stat="queued">{{ stats.queued }}</dd>
+    <dt>Being judged</dt>
+    <dd data-stat="judging">{{ stats.judging }}</dd>
+  </dl>
+
+  <h2>Verdicts in the last hour</h2>
+  <table class="listing">
+    <thead><tr><th>Verdict</th><th>Submissions</th></tr></thead>
+    <tbody>
+      {% for verdict, count in stats.recent_verdicts %}
+        <tr>
+          <td><span class="verdict verdict-{{ verdict.value | lower }}">{{ verdict.value }}</span> {{ verdict_names[verdict.value] }}</td>
+          <td data-stat="verdict-{{ verdict.value }}">{{ count }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Judge time over the last hour</h2>
+  {% if stats.judged %}
+    <dl class="limits">
+      <dt>Judged</dt>
+      <dd data-stat="judged">{{ stats.judged }}</dd>
+      <dt>Median</dt>
+      <dd data-stat="median-ms">{{ "%.0f" | format(stats.median_judge_ms) }} ms</dd>
+      <dt>95th percentile</dt>
+      <dd data-stat="p95-ms">{{ "%.0f" | format(stats.p95_judge_ms) }} ms</dd>
+    </dl>
+    <p class="note">
+      From a worker taking the submission to its verdict: compiling plus every test that ran.
+      Submissions marked failed after too many attempts are left out.
+    </p>
+  {% else %}
+    <p>Nothing was judged in the last hour.</p>
+  {% endif %}
+
+  <h2>Active workers</h2>
+  {% if stats.active_workers %}
+    <ul data-stat="workers">
+      {% for worker in stats.active_workers %}<li><code>{{ worker }}</code></li>{% endfor %}
+    </ul>
+  {% else %}
+    <p>No worker has held a lease in the last minute.</p>
+  {% endif %}
+  <p class="note">
+    A worker counts as active if it took or renewed a lease on a submission in the last minute,
+    so a worker with nothing to judge isn't listed.
+  </p>
+{% endblock %}

@@ -13,6 +13,7 @@ from verdict.core.redis_client import create_async_redis, create_redis
 from verdict.web import (
     admin_contests,
     admin_problems,
+    admin_stats,
     auth,
     contests,
     health,
@@ -58,5 +59,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(live.router)
     app.include_router(admin_problems.router)
     app.include_router(admin_contests.router)
+    app.include_router(admin_stats.router)
     install_error_pages(app)
     return app

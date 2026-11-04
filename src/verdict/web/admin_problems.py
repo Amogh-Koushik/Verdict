@@ -4,14 +4,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from psycopg.errors import UniqueViolation
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from verdict.core.models import Problem, ProblemTest
+from verdict.core.events import publish_contest_changed
+from verdict.core.models import Problem, ProblemTest, Submission
 from verdict.web.csrf import CSRF_PROTECTED
-from verdict.web.deps import DbDep, SettingsDep, Viewer, ViewerDep, require_admin
+from verdict.web.deps import DbDep, RedisDep, SettingsDep, Viewer, ViewerDep, require_admin
 from verdict.web.problem_form import ProblemForm, ProblemFormDep, ProblemFormError
+from verdict.web.rejudge import requeue_problem
 from verdict.web.templating import render
 from verdict.web.test_archive import MAX_TESTS, TestArchiveError, store_test_archive
 
@@ -53,8 +55,11 @@ def update_problem(
 
 
 @router.get("/problems/{problem_id}/tests")
-def problem_tests(request: Request, problem_id: int, viewer: ViewerDep, db: DbDep) -> HTMLResponse:
-    return _tests_page(request, viewer, db, _problem_or_404(db, problem_id))
+def problem_tests(
+    request: Request, problem_id: int, viewer: ViewerDep, db: DbDep, rejudged: int | None = None
+) -> HTMLResponse:
+    problem = _problem_or_404(db, problem_id)
+    return _tests_page(request, viewer, db, problem, rejudged=rejudged)
 
 
 @router.post("/problems/{problem_id}/tests", dependencies=CSRF_PROTECTED)
@@ -76,6 +81,30 @@ def upload_tests(
         return _tests_page(request, viewer, db, problem, str(error), 400)
     logger.info("tests uploaded", extra={"problem_id": problem.id, "tests_version": version})
     return RedirectResponse(f"/admin/problems/{problem.id}/tests", status_code=303)
+
+
+@router.post("/problems/{problem_id}/rejudge", dependencies=CSRF_PROTECTED)
+def rejudge_problem(
+    request: Request, problem_id: int, viewer: ViewerDep, db: DbDep, redis: RedisDep
+) -> Response:
+    problem = _problem_or_404(db, problem_id)
+    if problem.tests_version == 0:
+        return _tests_page(request, viewer, db, problem, "Upload tests before rejudging.", 400)
+    rejudge = requeue_problem(db, problem.id)
+    for contest_id in sorted(rejudge.contest_ids):
+        # Their scoreboards now show the requeued attempts as still being judged.
+        publish_contest_changed(redis, contest_id)
+    logger.info(
+        "problem rejudged",
+        extra={
+            "problem_id": problem.id,
+            "tests_version": problem.tests_version,
+            "submissions": rejudge.submissions,
+        },
+    )
+    return RedirectResponse(
+        f"/admin/problems/{problem.id}/tests?rejudged={rejudge.submissions}", status_code=303
+    )
 
 
 def _problem_or_404(db: Session, problem_id: int) -> Problem:
@@ -131,13 +160,25 @@ def _tests_page(
     problem: Problem,
     error: str | None = None,
     status_code: int = 200,
+    *,
+    rejudged: int | None = None,
 ) -> HTMLResponse:
     tests = db.scalars(
         select(ProblemTest)
         .where(ProblemTest.problem_id == problem.id, ProblemTest.version == problem.tests_version)
         .order_by(ProblemTest.idx)
     ).all()
-    context = {"problem": problem, "tests": tests, "error": error, "max_tests": MAX_TESTS}
+    submission_count = db.scalar(
+        select(func.count()).select_from(Submission).where(Submission.problem_id == problem.id)
+    )
+    context = {
+        "problem": problem,
+        "tests": tests,
+        "error": error,
+        "max_tests": MAX_TESTS,
+        "submission_count": submission_count or 0,
+        "rejudged": rejudged,
+    }
     return render(request, viewer, "admin/problem_tests.html", context, status_code=status_code)
 
 

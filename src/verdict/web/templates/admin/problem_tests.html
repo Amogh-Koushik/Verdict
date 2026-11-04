@@ -20,6 +20,22 @@
   {% else %}
     <p>This problem has no tests yet.</p>
   {% endif %}
+  {% if rejudged is not none %}
+    <p class="notice" role="status">
+      {{ rejudged }} submission{{ "" if rejudged == 1 else "s" }} went back in the queue, to be judged against version {{ problem.tests_version }}.
+    </p>
+  {% endif %}
+  {% if problem.tests_version and submission_count %}
+    <h2>Rejudge</h2>
+    <p>
+      Puts all {{ submission_count }} submissions for this problem back in the queue, to be judged
+      against version {{ problem.tests_version }}. Contest scoreboards show them as being judged until then.
+    </p>
+    <form method="post" action="/admin/problems/{{ problem.id }}/rejudge" class="stacked">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit">Rejudge {{ submission_count }} submission{{ "" if submission_count == 1 else "s" }}</button>
+    </form>
+  {% endif %}
   <h2>Upload a new version</h2>
   <p>
     A zip holding <code>1.in</code>, <code>1.out</code>, <code>2.in</code>, <code>2.out</code> and so on,

@@ -8,12 +8,14 @@ from sqlalchemy import func, select
 
 from verdict.core.accounts import AccountError, create_user
 from verdict.core.config import Settings, load_settings
-from verdict.core.db import create_db_engine, create_session_factory
+from verdict.core.db import create_db_engine, create_session_factory, database_now
 from verdict.core.logs import configure_logging
 from verdict.core.models import Problem, ProblemTest, problem_tests_dir
 from verdict.core.verdicts import Language
 from verdict.judge.runner import JudgeJob, JudgeResult, judge
 from verdict.judge.worker import worker_id
+from verdict.samples.problems import SAMPLE_CONTEST_STARTS_AFTER, SOLUTIONS_DIR
+from verdict.samples.seed import seed_samples
 
 SOURCE_SUFFIXES = {".cpp": Language.CPP, ".cc": Language.CPP, ".py": Language.PYTHON}
 
@@ -28,6 +30,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     )
     try_run_parser.add_argument("file", type=Path)
     try_run_parser.add_argument("problem_slug")
+    commands.add_parser("seed", help="add the sample problems, their tests and a sample contest")
     args = parser.parse_args(argv)
 
     settings = load_settings()
@@ -36,6 +39,8 @@ def main(argv: Sequence[str] | None = None) -> None:
         create_admin(settings, args.username)
     elif args.command == "try-run":
         print(describe(try_run(settings, args.file, args.problem_slug)))
+    elif args.command == "seed":
+        print("\n".join(seed(settings)))
 
 
 def create_admin(settings: Settings, username: str) -> None:
@@ -51,6 +56,21 @@ def create_admin(settings: Settings, username: str) -> None:
     finally:
         engine.dispose()
     print(f"Created administrator {username}.")
+
+
+def seed(settings: Settings) -> list[str]:
+    engine = create_db_engine(settings.database_url)
+    try:
+        with create_session_factory(engine)() as db:
+            starts_at = database_now(db) + SAMPLE_CONTEST_STARTS_AFTER
+            report = seed_samples(db, settings.problems_dir, starts_at)
+    finally:
+        engine.dispose()
+    return [
+        *report,
+        f"Reference solutions are in {SOLUTIONS_DIR}.",
+        "Judge one with: python -m verdict.cli try-run <file> <problem-slug>",
+    ]
 
 
 def try_run(settings: Settings, path: Path, problem_slug: str) -> JudgeResult:

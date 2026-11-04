@@ -40,6 +40,7 @@ def add_contest_submission(
     minute: float,
     verdict: Verdict | None,
     practice: bool = False,
+    source: str = "print(1)",
 ) -> Submission:
     """A submission made `minute` minutes into `contest`; still queued when `verdict` is None."""
     submission = Submission(
@@ -47,7 +48,7 @@ def add_contest_submission(
         problem_id=problem.id,
         contest_id=None if practice else contest.id,
         language=Language.PYTHON,
-        source="print(1)",
+        source=source,
         status=SubmissionStatus.QUEUED if verdict is None else SubmissionStatus.DONE,
         verdict=verdict,
         created_at=contest.starts_at + timedelta(minutes=minute),

@@ -1,24 +1,23 @@
 import hashlib
-import threading
 import time
-from collections.abc import Callable, Iterator
-from dataclasses import replace
+from collections.abc import Callable
 
-import pytest
 from docker import DockerClient
 from fastapi.testclient import TestClient
-from redis import Redis
-from sqlalchemy import Engine, update
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from tests.integration.forms import csrf_token_from, register
-from tests.sandbox.conftest import SUM_TESTS, sandbox_containers
+from tests.sandbox.conftest import (
+    SUM_TESTS,
+    RunningWorker,
+    sandbox_containers,
+    wait_until,
+)
 from verdict.core.accounts import create_user
 from verdict.core.config import Settings
 from verdict.core.models import Problem, ProblemTest, Submission, problem_tests_dir
 from verdict.core.verdicts import Language, SubmissionStatus, Verdict
-from verdict.judge.listener import QueueListener
-from verdict.judge.worker import WorkerContext, run_worker
 
 SUM_SOLUTION = "a, b = map(int, input().split())\nprint(a + b)\n"
 
@@ -58,63 +57,9 @@ def queue(db: Session, problem: Problem, source: str) -> int:
     return submission.id
 
 
-def wait_until(condition: Callable[[], bool], timeout_seconds: float) -> bool:
-    deadline = time.monotonic() + timeout_seconds
-    while time.monotonic() < deadline:
-        if condition():
-            return True
-        time.sleep(0.1)
-    return False
-
-
 def status_of(db: Session, submission_id: int) -> Submission:
     db.expire_all()
     return db.get_one(Submission, submission_id)
-
-
-class RunningWorker:
-    def __init__(self, context: WorkerContext) -> None:
-        self.context = context
-        self._listener = QueueListener(context.settings.database_url)
-        self._thread = threading.Thread(target=run_worker, args=(context, self._listener.wait))
-
-    def start(self) -> None:
-        self._thread.start()
-
-    def stop(self) -> None:
-        self.context.stop.set()
-
-    def join(self, timeout_seconds: float) -> bool:
-        self._thread.join(timeout_seconds)
-        self._listener.close()
-        return not self._thread.is_alive()
-
-
-@pytest.fixture
-def start_worker(
-    app_settings: Settings, engine: Engine, redis: Redis, docker_client: DockerClient
-) -> Iterator[Callable[..., RunningWorker]]:
-    workers: list[RunningWorker] = []
-
-    def start(shutdown_grace_seconds: float = 10, **overrides: int) -> RunningWorker:
-        context = WorkerContext(
-            settings=replace(app_settings, **overrides),
-            engine=engine,
-            redis=redis,
-            docker=docker_client,
-            worker_id=f"test-worker-{len(workers)}",
-            stop=threading.Event(),
-            shutdown_grace_seconds=shutdown_grace_seconds,
-        )
-        worker = RunningWorker(context)
-        workers.append(worker)
-        worker.start()
-        return worker
-
-    yield start
-    for worker in workers:
-        worker.stop()
-        assert worker.join(30), "worker did not stop"
 
 
 def test_an_accepted_solution_submitted_over_http_is_judged_within_ten_seconds(
